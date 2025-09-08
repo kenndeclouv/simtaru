@@ -35,7 +35,7 @@
                         <div class="app-brand justify-content-center">
                             <a href="/" class="app-brand-link gap-2">
                                 <span class="app-brand-logo demo">
-                                    <i class="icon-averroes" style="font-size: 5rem"></i>
+                                    <img src="{{ asset('assets/img/logo/logo-kabupaten.png') }}" alt="">
                                 </span>
                             </a>
                         </div>

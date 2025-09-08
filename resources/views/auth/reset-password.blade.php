@@ -13,7 +13,7 @@
                         <div class="app-brand justify-content-center">
                             <a href="/" class="app-brand-link gap-2">
                                 <span class="app-brand-logo demo">
-                                    <i class="icon-averroes" style="font-size: 5rem"></i>
+                                    <img src="{{ asset('assets/img/logo/logo-kabupaten.png') }}" alt="" height="100">
                                 </span>
                                 {{-- <span class="app-brand-text demo text-heading fw-bold">{{ config('app.name') }}</span> --}}
                             </a>

@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Data Santri')
+@section('title', 'Template Dokumen')
 
 @section('page-script')
     <script>

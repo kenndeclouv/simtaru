@@ -11,7 +11,7 @@
     <title>@yield('title') | {{ ucwords(str_replace('_', ' ', config('app.name')) ?? '-') }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ asset('averroes.svg') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/logo/logo-kabupaten.png') }}">
 
     <!-- SEO -->
     @include('layouts.layout_partials.seo')
@@ -36,32 +36,6 @@
 
     <!-- Main JS -->
     @include('layouts.layout_partials.scripts')
-    <script>
-        let deferredPrompt;
-
-        window.addEventListener("beforeinstallprompt", (event) => {
-            event.preventDefault();
-            deferredPrompt = event;
-
-            const installBtn = document.createElement("button");
-            installBtn.textContent = "Install Averroes Mobile";
-            installBtn.classList.add("btn", "btn-primary", "position-fixed", "bottom-0", "end-0", "m-3");
-            installBtn.style.zIndex = "1000";
-
-            document.body.appendChild(installBtn);
-
-            installBtn.addEventListener("click", () => {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === "accepted") {
-                        console.log("User accepted the install prompt");
-                    }
-                    installBtn.remove();
-                });
-            });
-        });
-    </script>
-
 </body>
 
 </html>

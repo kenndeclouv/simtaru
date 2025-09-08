@@ -2,9 +2,8 @@
     <div class="app-brand demo" style="padding-left: 22px">
         <a href="{{ route('dashboard') }}" class="app-brand-link">
             <span class="app-brand-logo demo">
-                {{-- <img src="{{ asset(env('APP_LOGO')) }}" alt="{{ config('app.name') . ' logo' }}"
-                    style="max-width:40px; border-radius:5px"> --}}
-                {{-- <i class="icon-averroes fs-2 text-primary"></i> --}}
+                <img src="{{ asset('assets/img/logo/logo-kabupaten.png') }}" alt="" height="50">
+
             </span>
             <span
                 class="app-brand-text demo menu-text text-primary fw-semibold ms-2">{{ ucfirst(config('app.name')) }}</span>

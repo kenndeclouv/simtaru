@@ -11,7 +11,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- <meta name="pusher-app-key" content="{{ config('broadcasting.connections.pusher.key') }}"> --}}
     <title>@yield('title') | {{ ucwords(str_replace('_', ' ', config('app.name'))) }}</title>
-    {{-- <link rel="icon" type="image/x-icon" href="{{ asset('averroes.svg') }}"> --}}
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/logo/logo-kabupaten.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <!-- SEO -->
     @include('layouts.layout_partials.seo')
