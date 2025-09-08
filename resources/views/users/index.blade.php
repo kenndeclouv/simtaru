@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Manajemen Role')
+@section('title', 'Manajemen User')
 
 @section('page-script')
     <script>
@@ -7,7 +7,7 @@
 
         $('.datatable').DataTable({
             scrollY: "300px",
-            scrollX: !0,
+            scrollX: true,
             layout: {
                 topStart: {
                     rowClass: "row mx-3 my-0 justify-content-between",
@@ -29,7 +29,7 @@
                 },
                 bottomEnd: {
                     paging: {
-                        firstLast: !1
+                        firstLast: false
                     }
                 }
             },
@@ -39,14 +39,14 @@
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <x-breadcrumb :items="[['text' => 'Roles']]" />
+        <x-breadcrumb :items="[['text' => 'Users']]" />
 
         <!-- Scrollable -->
         <div class="card">
             <div class="card-body d-block d-lg-flex border-bottom">
-                <h5 class="text-start">Manajemen Role</h5>
-                @can('create roles')
-                    <a href="{{ route('roles.create') }}" class="btn btn-primary ms-0 ms-lg-auto">Tambahkan Role</a>
+                <h5 class="text-start">Manajemen User</h5>
+                @can('create users')
+                    <a href="{{ route('users.create') }}" class="btn btn-primary ms-0 ms-lg-auto">Tambahkan User</a>
                 @endcan
             </div>
             <div class="card-datatable text-nowrap">
@@ -54,35 +54,41 @@
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th>Nama Role</th>
-                            <th>Permission</th>
+                            <th>Nama</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            {{-- <th>Foto</th> --}}
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($roles as $role)
+                        @foreach ($users as $user)
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
-                                <td>{{ $role->name }}</td>
+                                <td>{{ $user->name }}</td>
+                                <td>{{ $user->email }}</td>
                                 <td>
-                                    @if ($role->permissions->count())
+                                    @if ($user->roles->count())
                                         <ul class="mb-0">
-                                            @foreach ($role->permissions as $permission)
-                                                <li>{{ $permission->name }}</li>
+                                            @foreach ($user->roles as $role)
+                                                <li>{{ $role->name }}</li>
                                             @endforeach
                                         </ul>
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
                                 </td>
+                                {{-- <td>
+                                    <img src="{{ $user->photo }}" alt="Foto" width="40" height="40" class="rounded-circle">
+                                </td> --}}
                                 <td>
-                                    @can('edit roles')
-                                        <a href="{{ route('roles.edit', $role->id) }}"
-                                            class="btn btn-sm btn-warning"data-bs-toggle="tooltip" data-bs-placement="top"
-                                            data-bs-title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
+                                    @can('edit users')
+                                        <a href="{{ route('users.edit', $user->id) }}" class="btn btn-sm btn-warning"
+                                            data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Edit">
+                                            <i class="fa-solid fa-pen-to-square"></i></a>
                                     @endcan
-                                    @can('delete roles')
-                                        <x-delete :route="route('roles.destroy', $role->id)" :title="'Hapus Role'" />
+                                    @can('delete users')
+                                        <x-delete :route="route('users.destroy', $user->id)" :title="'Hapus User'" />
                                     @endcan
                                 </td>
                             </tr>

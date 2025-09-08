@@ -26,15 +26,15 @@ class UserRequest extends FormRequest
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $userId,
-            'username' => 'required|unique:users,username,' . $userId,
             'password' => 'nullable|min:8|confirmed|regex:/^(?=.*[A-Z]).+$/',
+            'role' => 'required|exists:roles,name',
         ];
 
         if ($this->isMethod('put') || $this->isMethod('patch')) {
             $rules['name'] = 'sometimes|string|max:255';
             $rules['email'] = 'nullable|email';
-            $rules['username'] = 'nullable';
             $rules['password'] = 'nullable|min:8|confirmed|regex:/^(?=.*[A-Z]).+$/';
+            $rules['role'] = 'nullable|exists:roles,name';
         }
 
         return $rules;
@@ -48,12 +48,12 @@ class UserRequest extends FormRequest
             'email.required' => 'Email wajib diisi',
             'email.email' => 'Format email tidak valid',
             'email.unique' => 'Email sudah terdaftar',
-            'username.required' => 'Username wajib diisi',
-            'username.unique' => 'Username sudah terdaftar',
             'password.required' => 'Password wajib diisi',
             'password.min' => 'Password minimal 8 karakter',
             'password.confirmed' => 'Konfirmasi password tidak cocok',
-            'password.regex' => 'Password setidaknya memiliki 1 huruf besar.'
+            'password.regex' => 'Password setidaknya memiliki 1 huruf besar.',
+            'role.required' => 'Role wajib diisi',
+            'role.exists' => 'Role tidak valid'
         ];
     }
 }

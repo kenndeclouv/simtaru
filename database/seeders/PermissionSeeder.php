@@ -24,6 +24,7 @@ class PermissionSeeder extends Seeder
             'template',
             'roles',
             'key-storage',
+            'users',
         ];
         $actions = ['view', 'create', 'edit', 'delete'];
 
@@ -32,6 +33,11 @@ class PermissionSeeder extends Seeder
             foreach ($actions as $action) {
                 $permissions[] = Permission::createOrFirst(['name' => $action . ' ' . $feature]);
             }
+        }
+
+        $permissions = Permission::all();
+        foreach ($permissions as $permission) {
+            $permission->assignRole('Super Admin');
         }
     }
 }

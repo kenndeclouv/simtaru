@@ -22,6 +22,7 @@ class PermohonanRequest extends FormRequest
             'var_nik' => 'string|max:20|required',
             'var_nama' => 'string|max:255|required',
             'text_alamat' => 'string|required',
+            'var_provinsi' => 'string|max:255|required',
             'var_kabupaten' => 'string|max:255|required',
             'var_kecamatan' => 'string|max:255|required',
             'var_kelurahan' => 'string|max:255|required',
@@ -38,6 +39,10 @@ class PermohonanRequest extends FormRequest
             'json_geometry' => 'required',
             'date_tanggal_permohonan' => 'required',
             'pilihan_redaksi_ids' => 'array|required',
+
+            'text_catatan' => 'string|nullable',
+            'enum_status' => 'string|nullable|in:pending,approved,rejected',
+            'var_lampiran' => 'string|nullable',
         ];
     }
 
@@ -52,6 +57,9 @@ class PermohonanRequest extends FormRequest
             'var_nama.required' => 'var_nama harus diisi.',
             'text_alamat.string' => 'text_alamat harus berupa string.',
             'text_alamat.required' => 'text_alamat harus diisi.',
+            'var_provinsi.string' => 'var_provinsi harus berupa string.',
+            'var_provinsi.max' => 'var_provinsi tidak boleh lebih dari 255 karakter.',
+            'var_provinsi.required' => 'var_provinsi harus diisi.',
             'var_kabupaten.string' => 'var_kabupaten harus berupa string.',
             'var_kabupaten.max' => 'var_kabupaten tidak boleh lebih dari 255 karakter.',
             'var_kabupaten.required' => 'var_kabupaten harus diisi.',
@@ -95,6 +103,11 @@ class PermohonanRequest extends FormRequest
             'var_nomor_pengesahan.max' => 'var_nomor_pengesahan tidak boleh lebih dari 255 karakter.',
             'pilihan_redaksi_ids.array' => 'pilihan_redaksi_ids harus berupa array.',
             'pilihan_redaksi_ids.required' => 'pilihan_redaksi_ids harus diisi.',
+            'text_catatan.string' => 'text_catatan harus berupa string.',
+            'enum_status.string' => 'enum_status harus berupa string.',
+            'enum_status.in' => 'enum_status harus berupa pending, approved, atau rejected.',
+            'var_lampiran.string' => 'var_lampiran harus berupa string.',
+            'var_lampiran.nullable' => 'var_lampiran boleh diisi.',
         ];
     }
 }

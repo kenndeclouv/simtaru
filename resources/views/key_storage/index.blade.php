@@ -53,10 +53,12 @@
         <div class="card">
             <div class="card-body d-block d-lg-flex border-bottom">
                 <h5 class="text-start">Key Storage</h5>
-                <button type="button" class="btn btn-primary ms-0 ms-lg-auto" data-bs-toggle="modal"
-                    data-bs-target="#createKeyStorageModal">
-                    Tambahkan Key Storage
-                </button>
+                @can('create key-storage')
+                    <button type="button" class="btn btn-primary ms-0 ms-lg-auto" data-bs-toggle="modal"
+                        data-bs-target="#createKeyStorageModal">
+                        Tambahkan Key Storage
+                    </button>
+                @endcan
             </div>
             <div class="card-datatable text-nowrap">
                 <table class="datatable table table-stripped table-responsive">
@@ -77,10 +79,14 @@
                                 <td>{{ $keyStorage->var_value }}</td>
                                 <td>{{ $keyStorage->var_description }}</td>
                                 <td>
-                                    <a href="{{ route('key-storages.edit', $keyStorage->id) }}"
-                                        class="btn btn-sm btn-warning" data-bs-toggle="tooltip" data-bs-placement="top"
-                                        data-bs-title="Edit Key Storage"><i class="fas fa-pen-to-square"></i></a>
-                                    <x-delete :title="'Hapus Key Storage'" :route="route('key-storages.destroy', $keyStorage->id)" :size="'btn-sm'" />
+                                    @can('edit key-storage')
+                                        <a href="{{ route('key-storages.edit', $keyStorage->id) }}"
+                                            class="btn btn-sm btn-warning" data-bs-toggle="tooltip" data-bs-placement="top"
+                                            data-bs-title="Edit Key Storage"><i class="fas fa-pen-to-square"></i></a>
+                                    @endcan
+                                    @can('delete key-storage')
+                                        <x-delete :title="'Hapus Key Storage'" :route="route('key-storages.destroy', $keyStorage->id)" :size="'btn-sm'" />
+                                    @endcan
                                 </td>
                             </tr>
                         @endforeach

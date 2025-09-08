@@ -9,6 +9,7 @@ use App\Models\Permohonan;
 use App\Models\PermohonanTemplateDoc;
 use App\Models\TemplateDocs;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Yajra\DataTables\Facades\DataTables;
 
 class PermohonanController extends Controller
@@ -111,20 +112,107 @@ class PermohonanController extends Controller
     {
         $validated = $request->validated();
 
-        // Convert json_pilihan_redaksi array to string (JSON)
-        if (isset($validated['json_pilihan_redaksi']) && is_array($validated['json_pilihan_redaksi'])) {
-            $validated['json_pilihan_redaksi'] = json_encode($validated['json_pilihan_redaksi']);
-        }
-
         $permohonan->update($validated);
+
+        // Update relasi PermohonanTemplateDoc
+        if (isset($validated['pilihan_redaksi_ids'])) {
+            // Hapus relasi lama
+            $permohonan->templateDocs()->detach();
+            // Tambah relasi baru
+            foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
+                $template_doc = TemplateDocs::find($template_doc_id);
+                if ($template_doc) {
+                    PermohonanTemplateDoc::create([
+                        'fk_permohonan_id' => $permohonan->id,
+                        'fk_template_docs_id' => $template_doc->id
+                    ]);
+                }
+            }
+        }
 
         return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil diperbarui.');
     }
 
-
-    public function show(Permohonan $permohonan)
+    public function show($id)
     {
-        $templateDocs = TemplateDocs::all();
-        return view('permohonan.show', compact('permohonan', 'templateDocs'));
+        $permohonan = Permohonan::findOrFail($id);
+
+        // Array untuk menampung nama-nama wilayah
+        $namaWilayah = [];
+
+        // --- Cari nama untuk ALAMAT PENGUSUL ---
+        if ($permohonan->var_provinsi) {
+            $namaWilayah['provinsi'] = $this->findWilayahNameById('data-indonesia/provinsi.json', $permohonan->var_provinsi);
+        }
+        if ($permohonan->var_kabupaten) {
+            $namaWilayah['kabupaten'] = $this->findWilayahNameById("data-indonesia/kabupaten/{$permohonan->var_provinsi}.json", $permohonan->var_kabupaten);
+        }
+        if ($permohonan->var_kecamatan) {
+            $namaWilayah['kecamatan'] = $this->findWilayahNameById("data-indonesia/kecamatan/{$permohonan->var_kabupaten}.json", $permohonan->var_kecamatan);
+        }
+        if ($permohonan->var_kelurahan) {
+            $namaWilayah['kelurahan'] = $this->findWilayahNameById("data-indonesia/kelurahan/{$permohonan->var_kecamatan}.json", $permohonan->var_kelurahan);
+        }
+
+        // --- Cari nama untuk ALAMAT USAHA ---
+        if ($permohonan->var_kecamatan_usaha) {
+            // Asumsi `var_kabupaten_usaha` juga tersimpan dari form edit/create
+            $namaWilayah['kecamatan_usaha'] = $this->findWilayahNameById("data-indonesia/kecamatan/{$permohonan->var_kabupaten_usaha}.json", $permohonan->var_kecamatan_usaha);
+        }
+        if ($permohonan->var_kelurahan_usaha) {
+            $namaWilayah['kelurahan_usaha'] = $this->findWilayahNameById("data-indonesia/kelurahan/{$permohonan->var_kecamatan_usaha}.json", $permohonan->var_kelurahan_usaha);
+        }
+
+        return view('permohonan.show', [
+            'permohonan' => $permohonan,
+            'namaWilayah' => $namaWilayah, // Kirim data nama wilayah ke view
+        ]);
+    }
+
+    // destroy
+    public function destroy(Permohonan $permohonan)
+    {
+        $permohonan->delete();
+        return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil dihapus.');
+    }
+
+    // approve
+    public function status(Permohonan $permohonan, Request $request)
+    {
+
+        // upload lampiran
+        $lampiranName = null;
+        if ($request->hasFile('var_lampiran')) {
+            $lampiran = $request->file('var_lampiran');
+            $lampiranName = time() . '_' . $lampiran->getClientOriginalName();
+            $lampiran->storeAs('uploads', $lampiranName);
+        }
+
+        $permohonan->update([
+            'enum_status' => $request->status,
+            'date_tanggal_pengesahan' => now(),
+            'text_catatan' => $request->text_catatan,
+            'var_lampiran' => $lampiranName,
+        ]);
+        return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil diubah status menjadi ' . $request->status . '.');
+    }
+
+    /**
+     * Fungsi helper untuk mencari nama wilayah dari file JSON.
+     */
+    private function findWilayahNameById($filePath, $id)
+    {
+        $fullPath = public_path($filePath);
+
+        if (!File::exists($fullPath)) {
+            return $id; // Jika file tidak ada, kembalikan ID-nya saja
+        }
+
+        $data = json_decode(File::get($fullPath), true);
+
+        // Cari array yang cocok berdasarkan ID
+        $found = collect($data)->firstWhere('id', $id);
+
+        return $found ? $found['nama'] : $id; // Jika ketemu, kembalikan 'nama', jika tidak, kembalikan ID
     }
 }

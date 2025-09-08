@@ -52,14 +52,28 @@
                 </a>
             </li>
         @endcan
-        @can('view roles')
-            <li class="menu-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                <a href="{{ route('roles.index') }}" class="menu-link">
-                    <i class="menu-icon fa-solid fa-shield fs-6"></i>
-                    <div class="text-truncate">
-                        Roles
-                    </div>
+        @can('view roles' || 'view users')
+            <li class="menu-item {{ request()->routeIs('roles.*') || request()->routeIs('users.*') ? 'active open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon icon-base fa-solid fa-shield fs-6"></i>
+                    <div>RBAC</div>
                 </a>
+                <ul class="menu-sub">
+                    @can('view roles')
+                        <li class="menu-item {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                            <a href="{{ route('roles.index') }}" class="menu-link">
+                                <div>Roles</div>
+                            </a>
+                        </li>
+                    @endcan
+                    @can('view users')
+                        <li class="menu-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                            <a href="{{ route('users.index') }}" class="menu-link">
+                                <div>Users</div>
+                            </a>
+                        </li>
+                    @endcan
+                </ul>
             </li>
         @endcan
         @can('view key-storage')

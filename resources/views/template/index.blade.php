@@ -3,34 +3,40 @@
 
 @section('page-script')
     <script>
-        $('.datatable').DataTable({
-            scrollY: "300px",
-            scrollX: !0,
-            layout: {
-                topStart: {
-                    rowClass: "row mx-3 my-0 justify-content-between",
-                    features: [{
-                        pageLength: {
-                            menu: [7, 10, 25, 50, 100],
-                            text: "Show_MENU_entries"
+        $(document).ready(function() {
+            $('.select2').select2({
+                dropdownParent: $('.select2').parent(),
+                placeholder: 'Pilih Jenis Dokumen'
+            });
+            $('.datatable').DataTable({
+                scrollY: "300px",
+                scrollX: !0,
+                layout: {
+                    topStart: {
+                        rowClass: "row mx-3 my-0 justify-content-between",
+                        features: [{
+                            pageLength: {
+                                menu: [7, 10, 25, 50, 100],
+                                text: "Show_MENU_entries"
+                            }
+                        }]
+                    },
+                    topEnd: {
+                        search: {
+                            placeholder: ""
                         }
-                    }]
-                },
-                topEnd: {
-                    search: {
-                        placeholder: ""
+                    },
+                    bottomStart: {
+                        rowClass: "row mx-3 justify-content-between",
+                        features: ["info"]
+                    },
+                    bottomEnd: {
+                        paging: {
+                            firstLast: !1
+                        }
                     }
                 },
-                bottomStart: {
-                    rowClass: "row mx-3 justify-content-between",
-                    features: ["info"]
-                },
-                bottomEnd: {
-                    paging: {
-                        firstLast: !1
-                    }
-                }
-            },
+            });
         });
     </script>
 @endsection
@@ -41,10 +47,11 @@
             <h5
                 class="card-header text-md-start text-center border-bottom d-flex justify-content-between align-items-center">
                 Daftar Template Dokumen
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#modalUploadTemplate">
-                    Tambahkan Template
-                </button>
+                @can('create template')
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalUploadTemplate">
+                        Tambahkan Template
+                    </button>
+                @endcan
             </h5>
             <div class="card-body">
                 <div id="upload-result"></div>
@@ -57,7 +64,7 @@
                             <th>Jenis</th>
                             <th>Nama Template</th>
                             <th>File</th>
-                            {{-- <th>Aksi</th> --}}
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,9 +78,17 @@
                                         {{ basename($template->var_file_path) }}
                                     </a>
                                 </td>
-                                {{-- <td>
-
-                                </td> --}}
+                                <td>
+                                    @can('edit template')
+                                        <a href="{{ route('template.edit', $template->id) }}" class="btn btn-sm btn-warning"
+                                            data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Edit">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </a>
+                                    @endcan
+                                    @can('delete template')
+                                        <x-delete :route="route('template.destroy', $template->id)" :title="'Hapus Template'" />
+                                    @endcan
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -104,8 +119,8 @@
                         </div>
                         <div class="mb-3">
                             <label for="templateFile" class="form-label">Jenis Dokumen</label>
-                            <select name="jenis" id="jenis" class="form-select select2">
-                                <option value="template-docs" selected disabled>Template Dokumen</option>
+                            <select name="jenis" id="jenis" class="form-select select2" required>
+                                <option value="" disabled selected>Pilih Jenis Dokumen</option>
                                 <option value="sitr">SITR</option>
                                 <option value="rdtr">RDTR</option>
                                 <option value="kkpr">KKPR</option>

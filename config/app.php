@@ -147,4 +147,6 @@ return [
     'style' => env('APP_STYLE_STYLE', 'light'),
     'primary_color' => env('APP_STYLE_PRIMARY_COLOR', '#ffffff'),
     'themes' => env('APP_STYLE_THEMES', 'theme-default'),
+
+    'google_maps_api_key' => env('GOOGLE_MAPS_API_KEY', ),
 ];

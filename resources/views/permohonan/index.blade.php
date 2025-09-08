@@ -48,25 +48,34 @@
                         render: function(data, type, row) {
                             var showUrl = '/permohonan/' + row.id;
                             var editUrl = '/permohonan/' + row.id + '/edit';
-                            var deleteUrl = '/permohonan/' + row.id;
-                            var csrfToken = $('meta[name="csrf-token"]').attr('content');
-                            return `
-                            <a href="${showUrl}" class="btn btn-sm btn-info me-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Lihat Permohonan">
-                                <i class="fas fa-eye"></i>
-                            </a>
 
-                            <a href="${editUrl}" class="btn btn-sm btn-warning me-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Edit Permohonan">
-                                <i class="fas fa-pen-to-square"></i>
-                            </a>
-                            
-                            <form action="${deleteUrl}" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus data ini?')" >
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Hapus Permohonan">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </form>
-                        `;
+                            // --- PERUBAHAN DI SINI ---
+                            var deleteUrl = '/permohonan/' + row.id;
+                            // Kita simpan nama pengusul untuk ditampilkan di Swal
+                            var namaPengusul = row.var_nama;
+
+                            return `
+                                <div class="d-flex align-items-center">
+                                    <a href="${showUrl}" class="btn btn-sm btn-info me-1" data-bs-toggle="tooltip" title="Lihat Permohonan">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    
+                                    @can('edit permohonan')
+                                    <a href="${editUrl}" class="btn btn-sm btn-warning me-1" data-bs-toggle="tooltip" title="Edit Permohonan">
+                                        <i class="fas fa-pen-to-square"></i>
+                                    </a>
+                                    @endcan
+
+                                    @can('delete permohonan')
+                                    <a href="javascript:;" class="btn btn-sm btn-danger btn-delete" 
+                                    data-url="${deleteUrl}" 
+                                    data-name="${namaPengusul}" 
+                                    data-bs-toggle="tooltip" title="Hapus Permohonan">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </a>
+                                    @endcan
+                                </div>
+                            `;
                         }
                     }
                 ],
@@ -108,6 +117,49 @@
                     });
                 },
             });
+            $('.dt-scrollableTable').on('click', '.btn-delete', function(e) {
+                e.preventDefault(); // Mencegah aksi default link
+
+                const deleteUrl = $(this).data('url');
+                const itemName = $(this).data('name');
+                const csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+                Swal.fire({
+                    title: 'Yakin ingin menghapus?',
+                    text: `Data permohonan atas nama "${itemName}" akan dihapus permanen!`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#8592a3',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Buat form dinamis untuk mengirim request DELETE
+                        let form = document.createElement('form');
+                        form.action = deleteUrl;
+                        form.method = 'POST';
+                        form.style.display = 'none'; // Sembunyikan form
+
+                        // Tambahkan CSRF token
+                        let csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = '_token';
+                        csrfInput.value = csrfToken;
+                        form.appendChild(csrfInput);
+
+                        // Tambahkan method spoofing untuk DELETE
+                        let methodInput = document.createElement('input');
+                        methodInput.type = 'hidden';
+                        methodInput.name = '_method';
+                        methodInput.value = 'DELETE';
+                        form.appendChild(methodInput);
+
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
         });
     </script>
 @endsection
@@ -120,7 +172,9 @@
         <div class="card">
             <div class="card-body d-block d-lg-flex border-bottom">
                 <h5 class="text-start">Permohonan Ijin Pemanfaatan Tata Ruang</h5>
-                <a href="{{ route('permohonan.create') }}" class="btn btn-primary ms-0 ms-lg-auto">Tambahkan Permohonan</a>
+                @can('create permohonan')
+                    <a href="{{ route('permohonan.create') }}" class="btn btn-primary ms-0 ms-lg-auto">Tambahkan Permohonan</a>
+                @endcan
             </div>
             <div class="card-datatable text-nowrap">
                 <table class="dt-scrollableTable table table-stripped table-responsive">

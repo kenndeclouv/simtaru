@@ -28,37 +28,6 @@ class TemplateDocsController extends Controller
         return view('template.index', compact('templates'));
     }
 
-    /**
-     * Extract placeholders dari file .docx dengan membaca langsung XML (lebih akurat).
-     * Mengambil dari document.xml, header, dan footer.
-     */
-    /**
-     * [VERSI BARU & FINAL] Ekstrak placeholder menggunakan TemplateProcessor.
-     * Jauh lebih simpel dan andal.
-     */
-    private function extractPlaceholders(string $filePath): array
-    {
-        try {
-            // 1. Buat instance TemplateProcessor dengan file template-mu
-            $templateProcessor = new TemplateProcessor($filePath);
-
-            // 2. Gunakan method getVariables() untuk langsung dapat semua placeholder!
-            $placeholders = $templateProcessor->getVariables();
-
-            // Hasilnya adalah array, jadi kita langsung kembalikan saja.
-            return $placeholders;
-        } catch (\Exception $e) {
-            // ---- INI BAGIAN PENTING UNTUK DEBUGGING ----
-            // Hentikan eksekusi dan tampilkan pesan error yang sebenarnya.
-            // Ini akan menunjukkan kepada kita akar masalahnya.
-            dd('TemplateProcessor Gagal: ' . $e->getMessage(), $e);
-
-            // Baris ini tidak akan pernah dieksekusi karena dd() menghentikan program,
-            // tapi kita biarkan di sini untuk kelengkapan.
-            return [];
-        }
-    }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -93,10 +62,62 @@ class TemplateDocsController extends Controller
             ]);
         }
 
-        return redirect()->route('template.index')->with('success', 'Template berhasil disimpan dengan ' . count($placeholders) . ' placeholder ditemukan.');
+        return redirect()->route('template.index')->with('success', 'Template berhasil ditambahkan dengan ' . count($placeholders) . ' placeholder ditemukan.');
     }
 
-    // --- Sisanya (generateFromTemplate, delete) tidak perlu diubah ---
+    public function edit(TemplateDocs $template)
+    {
+        return view('template.edit', compact('template'));
+    }
+
+    public function update(Request $request, TemplateDocs $template)
+    {
+        $request->validate([
+            'template' => 'nullable|mimes:docx',
+            'nama' => 'required|string',
+            'jenis' => 'required|in:sitr,rdtr,kkpr'
+        ]);
+
+        $path = $request->file('template') ? $request->file('template')->store('templates', 'public') : $template->var_file_path;
+
+        // Panggil fungsi extractPlaceholders yang sudah diperbaiki
+        // $placeholders = $this->extractPlaceholders(storage_path('app/' . $path));
+
+        $placeholders = $this->extractPlaceholders(Storage::disk('public')->path($path));
+
+        // Jika tidak ada placeholder ditemukan, kamu bisa kasih feedback atau lanjutkan saja
+        if (empty($placeholders)) {
+            // Bisa kasih warning di sini jika mau
+            // return redirect()->back()->with('warning', 'Tidak ada placeholder ditemukan di file template.');
+        }
+
+        $template->update([
+            'var_nama' => $request->nama,
+            'var_file_path' => $path,
+            'enum_jenis' => $request->jenis
+        ]);
+
+        TemplateDocsPlaceholder::where('fk_template_docs_id', $template->id)->delete();
+        foreach ($placeholders as $p) {
+            TemplateDocsPlaceholder::updateOrCreate([
+                'fk_template_docs_id' => $template->id,
+                'var_key' => $p
+            ]);
+        }
+
+        return redirect()->route('template.index')->with('success', 'Template berhasil diubah dengan ' . count($placeholders) . ' placeholder ditemukan.');
+    }
+
+    public function destroy(TemplateDocs $template)
+    {
+        deleteFile($template->var_file_path);
+        $template->delete();
+        return redirect()->route('template.index')->with('success', 'Template berhasil dihapus');
+    }
+
+
+
+
     public function generateFromTemplate(Request $request, $templateId)
     {
         $template = TemplateDocs::findOrFail($templateId);
@@ -139,11 +160,26 @@ class TemplateDocsController extends Controller
         }
     }
 
-    public function delete(Request $request, $id)
+    private function extractPlaceholders(string $filePath): array
     {
-        $template = TemplateDocs::findOrFail($id);
-        $template->delete();
+        try {
+            // 1. Buat instance TemplateProcessor dengan file template-mu
+            $templateProcessor = new TemplateProcessor($filePath);
 
-        return redirect()->route('template.index')->with('success', 'Template berhasil dihapus');
+            // 2. Gunakan method getVariables() untuk langsung dapat semua placeholder!
+            $placeholders = $templateProcessor->getVariables();
+
+            // Hasilnya adalah array, jadi kita langsung kembalikan saja.
+            return $placeholders;
+        } catch (\Exception $e) {
+            // ---- INI BAGIAN PENTING UNTUK DEBUGGING ----
+            // Hentikan eksekusi dan tampilkan pesan error yang sebenarnya.
+            // Ini akan menunjukkan kepada kita akar masalahnya.
+            dd('TemplateProcessor Gagal: ' . $e->getMessage(), $e);
+
+            // Baris ini tidak akan pernah dieksekusi karena dd() menghentikan program,
+            // tapi kita biarkan di sini untuk kelengkapan.
+            return [];
+        }
     }
 }

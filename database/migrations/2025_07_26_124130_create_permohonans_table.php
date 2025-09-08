@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->string('var_nik', 20);
             $table->string('var_nama');
             $table->text('text_alamat');
+            $table->string('var_provinsi');
             $table->string('var_kabupaten');
             $table->string('var_kecamatan');
             $table->string('var_kelurahan');
@@ -39,6 +40,9 @@ return new class extends Migration {
             $table->string('var_nomor_pengesahan')->nullable();
             $table->date('date_tanggal_pengesahan')->nullable();
 
+            $table->text('text_catatan')->nullable();
+            $table->string('var_url_lampiran')->nullable();
+            $table->enum('enum_status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->timestamps();
         });
     }

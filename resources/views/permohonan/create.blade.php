@@ -4,31 +4,52 @@
 
 @section('page-script')
     <script>
-        $('.select2').select2();
-    </script>
-    <script>
+        // Inisialisasi awal (cukup sekali)
+        $('.select2').select2({
+            width: '100%',
+            dropdownParent: $('.select2').parent()
+        });
+
+        const PROVINSI_ID_DEFAULT = '35';
+        const KABUPATEN_ID_DEFAULT = '3508';
+
+        // --- FUNGSI HELPER (SAMA PERSIS, TIDAK USAH DIUBAH) ---
         function reloadSelect2($select, options, placeholder = '') {
-            $select.html(options).val('').trigger('change');
+            $select.html(options);
             $select.select2({
-                // theme: 'bootstrap-5',
                 width: '100%',
                 placeholder: placeholder,
                 dropdownParent: $select.parent()
             });
         }
 
-
-        $(document).ready(function() {
-            // Load provinsi sekali untuk semua group
-            $.getJSON('/data-indonesia/provinsi.json', function(data) {
-                let opt = '<option value="">-- Pilih Provinsi --</option>';
-                data.forEach(p => opt += `<option value="${p.id}">${p.nama}</option>`);
-                $('.provinsi').each(function() {
-                    reloadSelect2($(this), opt, '-- Pilih Provinsi --');
+        async function populateSelect($select, url, placeholder, selectedValue = null) {
+            $select.html('<option value="">Memuat...</option>').prop('disabled', true);
+            try {
+                const data = await $.getJSON(url);
+                let options = `<option value="">${placeholder}</option>`;
+                data.forEach(item => {
+                    options += `<option value="${item.id}">${item.nama}</option>`;
                 });
-            });
 
-            // Event binding per group
+                reloadSelect2($select, options, placeholder);
+
+                if (selectedValue) {
+                    setTimeout(function() {
+                        $select.val(selectedValue).trigger('change.select2');
+                    }, 50);
+                }
+
+                $select.prop('disabled', false);
+            } catch (error) {
+                console.error(`Gagal memuat data dari ${url}`, error);
+                $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
+                throw error;
+            }
+        }
+
+        // --- FUNGSI UNTUK MENGAKTIFKAN EVENT LISTENER (SAMA PERSIS) ---
+        function bindLocationChangeEvents() {
             $('.location-group').each(function() {
                 const $group = $(this);
                 const $prov = $group.find('.provinsi');
@@ -36,78 +57,71 @@
                 const $kec = $group.find('.kecamatan');
                 const $kel = $group.find('.kelurahan');
 
-                // Provinsi change
                 $prov.on('change', function() {
-                    let id = $(this).val();
-
-                    reloadSelect2($kab, '<option value="">-- Pilih Kabupaten --</option>',
-                        '-- Pilih Kabupaten --');
-                    reloadSelect2($kec, '<option value="">-- Pilih Kecamatan --</option>',
-                        '-- Pilih Kecamatan --');
-                    reloadSelect2($kel, '<option value="">-- Pilih Kelurahan --</option>',
-                        '-- Pilih Kelurahan --');
-
-                    $kab.prop('disabled', !id);
-                    $kec.prop('disabled', true);
-                    $kel.prop('disabled', true);
-
-                    if (id) {
-                        $.getJSON(`/data-indonesia/kabupaten/${id}.json`, function(data) {
-                            let opt = '<option value="">-- Pilih Kabupaten --</option>';
-                            data.forEach(k => opt +=
-                                `<option value="${k.id}">${k.nama}</option>`);
-                            reloadSelect2($kab, opt, '-- Pilih Kabupaten --');
-                        });
+                    const provId = $(this).val();
+                    if (provId) {
+                        populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
+                            '-- Pilih Kabupaten --');
+                    } else {
+                        $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
+                            .trigger('change');
                     }
+                    $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
+                        .trigger('change');
+                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                        .trigger('change');
                 });
 
-                // Kabupaten change
                 $kab.on('change', function() {
-                    let id = $(this).val();
-
-                    reloadSelect2($kec, '<option value="">-- Pilih Kecamatan --</option>',
-                        '-- Pilih Kecamatan --');
-                    reloadSelect2($kel, '<option value="">-- Pilih Kelurahan --</option>',
-                        '-- Pilih Kelurahan --');
-
-                    $kec.prop('disabled', !id);
-                    $kel.prop('disabled', true);
-
-                    if (id) {
-                        $.getJSON(`/data-indonesia/kecamatan/${id}.json`, function(data) {
-                            let opt = '<option value="">-- Pilih Kecamatan --</option>';
-                            data.forEach(k => opt +=
-                                `<option value="${k.id}">${k.nama}</option>`);
-                            reloadSelect2($kec, opt, '-- Pilih Kecamatan --');
-                        });
+                    const kabId = $(this).val();
+                    if (kabId) {
+                        populateSelect($kec, `/data-indonesia/kecamatan/${kabId}.json`,
+                            '-- Pilih Kecamatan --');
+                    } else {
+                        $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
+                            .trigger('change');
                     }
+                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                        .trigger('change');
                 });
 
-                // Kecamatan change
                 $kec.on('change', function() {
-                    let id = $(this).val();
-
-                    reloadSelect2($kel, '<option value="">-- Pilih Kelurahan --</option>',
-                        '-- Pilih Kelurahan --');
-                    $kel.prop('disabled', !id);
-
-                    if (id) {
-                        $.getJSON(`/data-indonesia/kelurahan/${id}.json`, function(data) {
-                            let opt = '<option value="">-- Pilih Kelurahan --</option>';
-                            data.forEach(k => opt +=
-                                `<option value="${k.id}">${k.nama}</option>`);
-                            reloadSelect2($kel, opt, '-- Pilih Kelurahan --');
-                        });
+                    const kecId = $(this).val();
+                    if (kecId) {
+                        populateSelect($kel, `/data-indonesia/kelurahan/${kecId}.json`,
+                            '-- Pilih Kelurahan --');
+                    } else {
+                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                            .trigger('change');
                     }
                 });
             });
+        }
+
+
+        // --- PROSES UTAMA SAAT DOKUMEN SIAP (VERSI CREATE) ---
+        $(document).ready(async function() {
+            // 1. Inisialisasi dropdown pengusul (hanya provinsi)
+            const $pengusulGroup = $('.location-group').eq(0);
+            await populateSelect($pengusulGroup.find('.provinsi'), '/data-indonesia/provinsi.json',
+                '-- Pilih Provinsi --');
+
+            // 2. Inisialisasi dropdown usaha (langsung kecamatan)
+            const $usahaGroup = $('.location-group').eq(1);
+            $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
+            $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
+            await populateSelect($usahaGroup.find('.kecamatan'),
+                `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`, '-- Pilih Kecamatan --');
+
+            // 3. Setelah semua siap, BARU aktifkan event listener
+            bindLocationChangeEvents();
         });
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnqQKmS5Q7UhluPg2f1K4gbr_6-KnM3Go&libraries=drawing">
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
     </script>
     <script>
         setTimeout(function() {
-            const map = new google.maps.Map(document.getElementById("map-canvas"), {
+            const map = new google.maps.Map(document.getElementById("map"), {
                 center: {
                     lat: -8.129955181277511,
                     lng: 113.22306606906642
@@ -388,7 +402,7 @@
                             </div>
 
                             <div class="location-group">
-                                <div class="mb-4 row">
+                                <div class="mb-4 row d-none">
                                     <label for="var_provinsi_usaha" class="col-sm-3 col-form-label">Provinsi</label>
                                     <div class="col-sm-9">
                                         <select name="var_provinsi_usaha" id="var_provinsi_usaha"
@@ -399,7 +413,7 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-4 row">
+                                <div class="mb-4 row d-none">
                                     <label for="var_kabupaten_usaha" class="col-sm-3 col-form-label">Kabupaten</label>
                                     <div class="col-sm-9">
                                         <select name="var_kabupaten_usaha" id="var_kabupaten_usaha"
@@ -463,17 +477,19 @@
                     <div class="card">
                         <h5 class="card-header border-bottom mb-3">Peta Lokasi Usulan</h5>
                         <div class="card-body">
-                            <div id="map-canvas" style="height: 500px; width: 100%; border-radius: 8px;"></div>
+                            <div id="map" style="height: 500px; width: 100%; border-radius: 8px;"></div>
                             <input type="hidden" name="json_geometry" id="json_geometry">
                             <div class="my-4 row">
                                 <label for="nomor_permohonan" class="col-sm-3 col-form-label">Nomor Permohonan</label>
                                 <div class="col-sm-9">
                                     <div class="input-group">
-                                        <span class="input-group-text">{{ $keyStorages->where('var_key', 'preFixNomorPermohonan')->first()->var_value }}</span>
+                                        <span
+                                            class="input-group-text">{{ $keyStorages->where('var_key', 'preFixNomorPermohonan')->first()->var_value }}</span>
                                         <input type="text" name="var_nomor_permohonan" id="var_nomor_permohonan"
                                             class="form-control  @error('var_nomor_permohonan') is-invalid @enderror"
                                             placeholder="(Otomatis)">
-                                        <span class="input-group-text">{{ $keyStorages->where('var_key', 'postFixNomorPermohonan')->first()->var_value }}</span>
+                                        <span
+                                            class="input-group-text">{{ $keyStorages->where('var_key', 'postFixNomorPermohonan')->first()->var_value }}</span>
                                     </div>
                                     <small class="form-text text-muted">Jangan ubah kolom ini jika ingin otomatis mengikuti
                                         urutan nomor
@@ -497,11 +513,13 @@
                                 <label for="var_nomor_pengesahan" class="col-sm-3 col-form-label">Nomor Pengesahan</label>
                                 <div class="col-sm-9">
                                     <div class="input-group">
-                                        <span class="input-group-text">{{ $keyStorages->where('var_key', 'preFixNomorSurat')->first()->var_value }}</span>
+                                        <span
+                                            class="input-group-text">{{ $keyStorages->where('var_key', 'preFixNomorSurat')->first()->var_value }}</span>
                                         <input type="text" name="var_nomor_pengesahan" id="var_nomor_pengesahan"
                                             class="form-control  @error('var_nomor_pengesahan') is-invalid @enderror"
                                             placeholder="(Otomatis)">
-                                        <span class="input-group-text">{{ $keyStorages->where('var_key', 'postFixNomorSurat')->first()->var_value }}</span>
+                                        <span
+                                            class="input-group-text">{{ $keyStorages->where('var_key', 'postFixNomorSurat')->first()->var_value }}</span>
                                     </div>
                                     <small class="form-text text-muted">Jangan ubah kolom ini jika ingin otomatis mengikuti
                                         urutan nomor

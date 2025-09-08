@@ -26,14 +26,17 @@
                             <dt class="col-sm-5">Alamat</dt>
                             <dd class="col-sm-7">: {{ $permohonan->text_alamat }}</dd>
 
+                            <dt class="col-sm-5">Provinsi</dt>
+                            <dd class="col-sm-7">: {{ $namaWilayah['provinsi'] ?? $permohonan->var_provinsi }}</dd>
+                            
                             <dt class="col-sm-5">Kabupaten</dt>
-                            <dd class="col-sm-7">: {{ $permohonan->var_kabupaten }}</dd>
+                            <dd class="col-sm-7">: {{ $namaWilayah['kabupaten'] ?? $permohonan->var_kabupaten }}</dd>
 
                             <dt class="col-sm-5">Kecamatan</dt>
-                            <dd class="col-sm-7">: {{ $permohonan->var_kecamatan }}</dd>
+                            <dd class="col-sm-7">: {{ $namaWilayah['kecamatan'] ?? $permohonan->var_kecamatan }}</dd>
 
                             <dt class="col-sm-5">Kelurahan</dt>
-                            <dd class="col-sm-7">: {{ $permohonan->var_kelurahan }}</dd>
+                            <dd class="col-sm-7">: {{ $namaWilayah['kelurahan'] ?? $permohonan->var_kelurahan }}</dd>
 
                             <dt class="col-sm-5">Email</dt>
                             <dd class="col-sm-7">: {{ $permohonan->var_email }}</dd>
@@ -58,10 +61,10 @@
                             <dd class="col-sm-7">: {{ $permohonan->text_alamat_usaha }}</dd>
 
                             <dt class="col-sm-5">Kecamatan Usaha</dt>
-                            <dd class="col-sm-7">: {{ $permohonan->var_kecamatan_usaha }}</dd>
+                            <dd class="col-sm-7">: {{ $namaWilayah['kecamatan_usaha'] ?? $permohonan->var_kecamatan_usaha }}</dd>
 
                             <dt class="col-sm-5">Kelurahan Usaha</dt>
-                            <dd class="col-sm-7">: {{ $permohonan->var_kelurahan_usaha }}</dd>
+                            <dd class="col-sm-7">: {{ $namaWilayah['kelurahan_usaha'] ?? $permohonan->var_kelurahan_usaha }}</dd>
 
                             <dt class="col-sm-5">Rencana Usaha</dt>
                             <dd class="col-sm-7">: {{ $permohonan->var_rencana_usaha }}</dd>
@@ -85,7 +88,7 @@
                                         <pre class="bg-light p-2 rounded small">{{ Str::limit($permohonan->json_geometry, 300) }}</pre>
                                     </dd>
                                 </dl> --}}
-                            <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnqQKmS5Q7UhluPg2f1K4gbr_6-KnM3Go&libraries=drawing">
+                            <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
                             </script>
                             <script>
                                 document.addEventListener('DOMContentLoaded', function() {
@@ -197,15 +200,10 @@
                         <dl class="row mb-0">
                             <dt class="col-sm-2">Redaksi</dt>
                             <dd class="col-sm-10">
-                                @php
-                                    $redaksi = is_array($permohonan->json_pilihan_redaksi)
-                                        ? $permohonan->json_pilihan_redaksi
-                                        : json_decode($permohonan->json_pilihan_redaksi, true);
-                                @endphp
-                                @if ($redaksi && is_array($redaksi))
+                                @if ($permohonan->templateDocs && $permohonan->templateDocs->count())
                                     <ul class="mb-0">
-                                        @foreach ($redaksi as $item)
-                                            <li>{{ $item }}</li>
+                                        @foreach ($permohonan->templateDocs as $templateDoc)
+                                            <li>{{ $templateDoc->var_nama }} ({{ $templateDoc->enum_jenis }})</li>
                                         @endforeach
                                     </ul>
                                 @else
