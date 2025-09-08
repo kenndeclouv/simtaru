@@ -3,187 +3,12 @@
 @section('title', 'Edit Permohonan SITR')
 
 @section('page-script')
-    {{-- <script>
-        // Inisialisasi Select2 untuk semua elemen dengan kelas .select2
-        $('.select2').select2({
-            width: '100%',
-            dropdownParent: $('.select2').parent()
-        });
-
-        // --- (BARU) TENTUKAN ID WILAYAH DEFAULT DI SINI ---
-        // Ganti ID Provinsi & Kabupaten sesuai wilayah default aplikasi kamu.
-        // Contoh: '35' untuk Jawa Timur, '3573' untuk Kota Malang
-        const PROVINSI_ID_DEFAULT = '35'; // Ganti Sesuai Kebutuhan
-        const KABUPATEN_ID_DEFAULT = '3508'; // Ganti Sesuai Kebutuhan
-
-        // --- FUNGSI-FUNGSI HELPER (TIDAK BERUBAH) ---
-        function reloadSelect2($select, options, placeholder = '', selected = '') {
-            // 1. Hapus opsi lama dan isi dengan yang baru
-            $select.html(options);
-
-            // 2. Inisialisasi ulang Select2 agar "membaca" opsi yang baru
-            $select.select2({
-                width: '100%',
-                placeholder: placeholder,
-                dropdownParent: $select.parent()
-            });
-
-            // 3. SETELAH diinisialisasi, baru atur nilainya dan picu event 'change'
-            //    agar tampilan visual Select2 ikut ter-update.
-            if (selected) {
-                $select.val(selected).trigger('change');
-            }
-        }
-
-        async function populateSelect($select, url, placeholder, selectedValue = null) {
-            $select.html('<option value="">Memuat...</option>').prop('disabled', true);
-            try {
-                const data = await $.getJSON(url);
-                let options = `<option value="">${placeholder}</option>`;
-                data.forEach(item => {
-                    options += `<option value="${item.id}">${item.nama}</option>`;
-                });
-                reloadSelect2($select, options, placeholder, selectedValue);
-                $select.prop('disabled', false);
-                return data;
-            } catch (error) {
-                console.error(`Gagal memuat data dari ${url}`, error);
-                $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
-                throw error;
-            }
-        }
-
-        // --- FUNGSI INISIALISASI ---
-
-        /**
-         * Fungsi untuk lokasi LENGKAP (Pengusul).
-         */
-        async function initializeLocationDropdowns($group, values) {
-            const {
-                prov,
-                kab,
-                kec,
-                kel
-            } = values;
-            const $prov = $group.find('.provinsi');
-            const $kab = $group.find('.kabupaten');
-            const $kec = $group.find('.kecamatan');
-            const $kel = $group.find('.kelurahan');
-
-            await populateSelect($prov, '/data-indonesia/provinsi.json', '-- Pilih Provinsi --', prov);
-            if (prov) {
-                await populateSelect($kab, `/data-indonesia/kabupaten/${prov}.json`, '-- Pilih Kabupaten --', kab);
-            }
-            if (kab) {
-                await populateSelect($kec, `/data-indonesia/kecamatan/${kab}.json`, '-- Pilih Kecamatan --', kec);
-            }
-            if (kec) {
-                await populateSelect($kel, `/data-indonesia/kelurahan/${kec}.json`, '-- Pilih Kelurahan --', kel);
-            }
-        }
-
-        /**
-         * (FUNGSI BARU) Fungsi khusus untuk lokasi USAHA (Kecamatan & Kelurahan saja).
-         */
-        async function initializeUsahaLocationDropdowns($group, values) {
-            const {
-                kec,
-                kel
-            } = values;
-            const $prov = $group.find('.provinsi');
-            const $kab = $group.find('.kabupaten');
-            const $kec = $group.find('.kecamatan');
-            const $kel = $group.find('.kelurahan');
-
-            // Set & simpan nilai Provinsi dan Kabupaten default secara 'tersembunyi'
-            $prov.val(PROVINSI_ID_DEFAULT);
-            $kab.val(KABUPATEN_ID_DEFAULT);
-
-            // Langsung muat Kecamatan berdasarkan KABUPATEN_ID_DEFAULT
-            await populateSelect($kec, `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`,
-                '-- Pilih Kecamatan --', kec);
-
-            // Jika ada data kecamatan tersimpan, muat kelurahannya
-            if (kec) {
-                await populateSelect($kel, `/data-indonesia/kelurahan/${kec}.json`, '-- Pilih Kelurahan --', kel);
-            }
-        }
-
-
-        // --- EVENT HANDLERS & INISIALISASI ---
-        $(document).ready(function() {
-            // Ambil data lama
-            const pengusulValues = {
-                prov: @json(old('var_provinsi', $permohonan->var_provinsi ?? '')),
-                kab: @json(old('var_kabupaten', $permohonan->var_kabupaten ?? '')),
-                kec: @json(old('var_kecamatan', $permohonan->var_kecamatan ?? '')),
-                kel: @json(old('var_kelurahan', $permohonan->var_kelurahan ?? ''))
-            };
-            const usahaValues = {
-                // Kita tidak butuh prov & kab dari DB karena sudah default
-                kec: @json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? '')),
-                kel: @json(old('var_kelurahan_usaha', $permohonan->var_kelurahan_usaha ?? ''))
-            };
-
-            // (DIUBAH) Jalankan fungsi inisialisasi yang sesuai untuk setiap grup
-            initializeLocationDropdowns($('.location-group').eq(0), pengusulValues);
-            initializeUsahaLocationDropdowns($('.location-group').eq(1), usahaValues);
-
-
-            // Event handler untuk interaksi pengguna SETELAH halaman dimuat
-            $('.location-group').each(function() {
-                const $group = $(this);
-                const $prov = $group.find('.provinsi');
-                const $kab = $group.find('.kabupaten');
-                const $kec = $group.find('.kecamatan');
-                const $kel = $group.find('.kelurahan');
-
-                $prov.on('change', function() {
-                    const provId = $(this).val();
-                    $kab.val(null).trigger('change');
-                    if (provId) {
-                        populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
-                            '-- Pilih Kabupaten --');
-                    } else {
-                        $kab.html('').prop('disabled', true);
-                    }
-                });
-
-                $kab.on('change', function() {
-                    const kabId = $(this).val();
-                    $kec.val(null).trigger('change');
-                    if (kabId) {
-                        populateSelect($kec, `/data-indonesia/kecamatan/${kabId}.json`,
-                            '-- Pilih Kecamatan --');
-                    } else {
-                        $kec.html('').prop('disabled', true);
-                    }
-                });
-
-                $kec.on('change', function() {
-                    const kecId = $(this).val();
-                    $kel.val(null).trigger('change');
-                    if (kecId) {
-                        populateSelect($kel, `/data-indonesia/kelurahan/${kecId}.json`,
-                            '-- Pilih Kelurahan --');
-                    } else {
-                        $kel.html('').prop('disabled', true);
-                    }
-                });
-            });
-        });
-    </script> --}}
     <script>
-        // Inisialisasi awal (cukup sekali)
-        $('.select2').select2({
-            width: '100%',
-            dropdownParent: $('.select2').parent()
-        });
+        $('.select2').select2();
 
-        const PROVINSI_ID_DEFAULT = '35'; // Ganti Sesuai Kebutuhan
-        const KABUPATEN_ID_DEFAULT = '3508'; // Ganti Sesuai Kebutuhan
+        const PROVINSI_ID_DEFAULT = '35';
+        const KABUPATEN_ID_DEFAULT = '3508';
 
-        // --- FUNGSI HELPER ---
         function reloadSelect2($select, options, placeholder = '') {
             $select.html(options);
             $select.select2({
@@ -201,14 +26,12 @@
                     options += `<option value="${item.id}">${item.nama}</option>`;
                 });
 
-                // Inisialisasi Select2 dengan opsi baru
                 reloadSelect2($select, options, placeholder);
 
-                // (INI JURUS PAMUNGKASNYA) Beri jeda sedikit sebelum memilih nilai
                 if (selectedValue) {
                     setTimeout(function() {
                         $select.val(selectedValue).trigger('change.select2');
-                    }, 50); // Jeda 50 milidetik, biasanya cukup
+                    }, 50);
                 }
 
                 $select.prop('disabled', false);
@@ -219,7 +42,6 @@
             }
         };
 
-        // GANTI FUNGSI INI
         async function initializeLocationDropdowns($group, values) {
             const {
                 prov,
@@ -232,26 +54,21 @@
             const $kec = $group.find('.kecamatan');
             const $kel = $group.find('.kelurahan');
 
-            // Langkah 1: Selalu muat daftar provinsi
             await populateSelect($prov, '/data-indonesia/provinsi.json', '-- Pilih Provinsi --', prov);
 
-            // Langkah 2: HANYA jika ada 'prov', muat daftar kabupatennya
             if (prov) {
                 await populateSelect($kab, `/data-indonesia/kabupaten/${prov}.json`, '-- Pilih Kabupaten --', kab);
             }
 
-            // Langkah 3: HANYA jika ada 'kab', muat daftar kecamatannya
             if (kab) {
                 await populateSelect($kec, `/data-indonesia/kecamatan/${kab}.json`, '-- Pilih Kecamatan --', kec);
             }
 
-            // Langkah 4: HANYA jika ada 'kec', muat daftar kelurahannya
             if (kec) {
                 await populateSelect($kel, `/data-indonesia/kelurahan/${kec}.json`, '-- Pilih Kelurahan --', kel);
             }
         }
 
-        // GANTI FUNGSI INI JUGA
         async function initializeUsahaLocationDropdowns($group, values) {
             const {
                 kec,
@@ -262,21 +79,17 @@
             const $kec = $group.find('.kecamatan');
             const $kel = $group.find('.kelurahan');
 
-            // Set nilai default yang tersembunyi
             $prov.val(PROVINSI_ID_DEFAULT);
             $kab.val(KABUPATEN_ID_DEFAULT);
 
-            // Langkah 1: Selalu muat daftar kecamatan berdasarkan kabupaten default
             await populateSelect($kec, `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`,
                 '-- Pilih Kecamatan --', kec);
 
-            // Langkah 2: HANYA jika ada 'kec', muat daftar kelurahannya
             if (kec) {
                 await populateSelect($kel, `/data-indonesia/kelurahan/${kec}.json`, '-- Pilih Kelurahan --', kel);
             }
         }
 
-        // --- (BARU) FUNGSI UNTUK MENGAKTIFKAN EVENT LISTENER ---
         function bindLocationChangeEvents() {
             $('.location-group').each(function() {
                 const $group = $(this);
@@ -287,7 +100,7 @@
 
                 $prov.on('change', function() {
                     const provId = $(this).val();
-                    $kab.val(null).trigger('change'); // Ini akan memicu event kab.on('change')
+                    $kab.val(null).trigger('change');
                     populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
                         '-- Pilih Kabupaten --');
                 });
@@ -309,9 +122,7 @@
         }
 
 
-        // --- PROSES UTAMA SAAT DOKUMEN SIAP ---
         $(document).ready(async function() {
-            // Tampilkan loading atau non-aktifkan form sementara
             $('form').css('opacity', 0.5);
 
             const pengusulValues = {
@@ -325,101 +136,18 @@
                 kel: @json(old('var_kelurahan_usaha', $permohonan->var_kelurahan_usaha ?? ''))
             };
 
-            // 1. TUNGGU (await) sampai semua data awal selesai dimuat
             await initializeLocationDropdowns($('.location-group').eq(0), pengusulValues);
             await initializeUsahaLocationDropdowns($('.location-group').eq(1), usahaValues);
 
-            // 2. SETELAH semua data terisi, BARU aktifkan event listener untuk interaksi pengguna
             bindLocationChangeEvents();
 
-            // Selesai, kembalikan tampilan form
             $('form').css('opacity', 1);
         });
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
     </script>
-    {{-- <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var geojson = {!! json_encode($permohonan->json_geometry) !!};
-            if (typeof geojson === 'string') {
-                try {
-                    geojson = JSON.parse(geojson);
-                } catch (e) {
-                    geojson = null;
-                }
-            }
-            if (!geojson) return;
-
-            // Find center of geometry
-            function getCenter(geojson) {
-                // Only supports Polygon/Point/LineString for simplicity
-                if (geojson.type === 'Point') {
-                    return {
-                        lat: geojson.coordinates[1],
-                        lng: geojson.coordinates[0]
-                    };
-                }
-                if (geojson.type === 'Polygon') {
-                    var coords = geojson.coordinates[0];
-                    var lats = coords.map(c => c[1]);
-                    var lngs = coords.map(c => c[0]);
-                    var lat = (Math.min(...lats) + Math.max(...lats)) / 2;
-                    var lng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-                    return {
-                        lat,
-                        lng
-                    };
-                }
-                if (geojson.type === 'LineString') {
-                    var coords = geojson.coordinates;
-                    var lats = coords.map(c => c[1]);
-                    var lngs = coords.map(c => c[0]);
-                    var lat = (Math.min(...lats) + Math.max(...lats)) / 2;
-                    var lng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-                    return {
-                        lat,
-                        lng
-                    };
-                }
-                // Default fallback
-                return {
-                    lat: -7.797068,
-                    lng: 110.370529
-                };
-            }
-
-            var center = getCenter(geojson);
-
-            var map = new google.maps.Map(document.getElementById('map'), {
-                center: center,
-                zoom: 16,
-            });
-
-            map.data.addGeoJson(geojson);
-
-            // Style
-            map.data.setStyle({
-                fillColor: '#1976d2',
-                strokeColor: '#1976d2',
-                strokeWeight: 2,
-                fillOpacity: 0.2
-            });
-
-            // Fit bounds
-            var bounds = new google.maps.LatLngBounds();
-            map.data.forEach(function(feature) {
-                feature.getGeometry().forEachLatLng(function(latlng) {
-                    bounds.extend(latlng);
-                });
-            });
-            if (!bounds.isEmpty()) {
-                map.fitBounds(bounds);
-            }
-        });
-    </script> --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- 1. Ambil dan parsing data GeoJSON dari database ---
             let geojson = {!! json_encode($permohonan->json_geometry) !!};
             if (typeof geojson === 'string') {
                 try {
@@ -429,14 +157,11 @@
                 }
             }
 
-            // --- 2. Tentukan titik tengah peta ---
-            // Jika ada data, pusatkan ke sana. Jika tidak, pakai lokasi default.
             let center = {
                 lat: -8.129955,
                 lng: 113.223066
-            }; // Ganti dengan lokasi defaultmu
+            };
             if (geojson) {
-                // Logika getCenter sederhana
                 if (geojson.geometry && geojson.geometry.type === 'Point') {
                     center = {
                         lat: geojson.geometry.coordinates[1],
@@ -444,7 +169,6 @@
                     };
                 } else if (geojson.geometry && (geojson.geometry.type === 'Polygon' || geojson.geometry.type ===
                         'LineString')) {
-                    // Ambil titik pertama sebagai pusat sederhana
                     const firstCoord = geojson.geometry.coordinates[0][0];
                     center = {
                         lat: firstCoord[1],
@@ -453,21 +177,18 @@
                 }
             }
 
-            // --- 3. Inisialisasi Peta ---
             const map = new google.maps.Map(document.getElementById("map"), {
                 center: center,
                 zoom: 11,
                 mapTypeId: "hybrid",
             });
 
-            // --- 4. Inisialisasi Drawing Manager (alat gambar) ---
             const drawingManager = new google.maps.drawing.DrawingManager({
                 drawingControl: true,
                 drawingControlOptions: {
                     position: google.maps.ControlPosition.TOP_LEFT,
                     drawingModes: ["marker", "polyline", "polygon"],
                 },
-                // Opsi styling sama seperti di halaman create...
                 polygonOptions: {
                     editable: true,
                     draggable: true,
@@ -487,13 +208,9 @@
                 },
             });
             drawingManager.setMap(map);
+            let currentShape = null;
 
-            let currentShape = null; // Variabel untuk menyimpan shape yang aktif
-
-            // --- 5. Tampilkan data lama (jika ada) ---
             if (geojson && geojson.geometry) {
-                // Google Maps tidak bisa langsung baca GeoJSON, jadi kita buat ulang shape-nya
-                // Ini akan memastikan shape-nya bisa langsung di-edit
                 const type = geojson.geometry.type;
                 const coords = geojson.geometry.coordinates;
 
@@ -513,7 +230,7 @@
                     }));
                     currentShape = new google.maps.Polygon({
                         paths: paths,
-                        ...drawingManager.polygonOptions, // Pakai style yang sama
+                        ...drawingManager.polygonOptions,
                         map: map,
                     });
                 } else if (type === 'LineString') {
@@ -523,23 +240,21 @@
                     }));
                     currentShape = new google.maps.Polyline({
                         path: path,
-                        ...drawingManager.polylineOptions, // Pakai style yang sama
+                        ...drawingManager.polylineOptions,
                         map: map,
                     });
                 }
 
-                // Zoom ke shape yang sudah ada
                 const bounds = new google.maps.LatLngBounds();
-                if (currentShape.getPath) { // untuk polygon & polyline
+                if (currentShape.getPath) {
                     currentShape.getPath().forEach(p => bounds.extend(p));
-                } else { // untuk marker
+                } else {
                     bounds.extend(currentShape.getPosition());
                 }
                 map.fitBounds(bounds);
-                if (map.getZoom() > 18) map.setZoom(18); // Batasi zoom maksimal
+                if (map.getZoom() > 18) map.setZoom(18);
             }
 
-            // --- 6. Fungsi untuk menyimpan geometri ke hidden input ---
             function updateGeometry(shape) {
                 const type = shape.getMap ? (shape.getPath ? (shape.getPaths ? 'polygon' : 'polyline') : 'marker') :
                     null;
@@ -558,7 +273,7 @@
                 } else if (type === 'polygon') {
                     const path = shape.getPath().getArray();
                     const coordinates = path.map(p => [p.lng(), p.lat()]);
-                    coordinates.push(coordinates[0]); // Tutup poligon
+                    coordinates.push(coordinates[0]);
                     newGeoJson = {
                         type: "Feature",
                         geometry: {
@@ -582,29 +297,24 @@
                 document.getElementById("json_geometry").value = JSON.stringify(newGeoJson);
             }
 
-            // --- 7. Event Listener untuk gambar baru & edit gambar lama ---
             google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
-                // Hapus shape lama jika ada
                 if (currentShape) {
                     currentShape.setMap(null);
                 }
                 currentShape = event.overlay;
-                drawingManager.setDrawingMode(null); // Matikan mode gambar setelah selesai
+                drawingManager.setDrawingMode(null);
                 updateGeometry(currentShape);
-
-                // Tambahkan listener untuk MENGEDIT shape yang baru dibuat
-                if (currentShape.getPath) { // Polyline atau Polygon
+                if (currentShape.getPath) {
                     google.maps.event.addListener(currentShape.getPath(), 'set_at', () => updateGeometry(
                         currentShape));
                     google.maps.event.addListener(currentShape.getPath(), 'insert_at', () => updateGeometry(
                         currentShape));
-                } else { // Marker
+                } else {
                     google.maps.event.addListener(currentShape, 'dragend', () => updateGeometry(
                         currentShape));
                 }
             });
 
-            // Tambahkan listener untuk MENGEDIT shape yang DARI DATABASE
             if (currentShape) {
                 if (currentShape.getPath) {
                     google.maps.event.addListener(currentShape.getPath(), 'set_at', () => updateGeometry(
@@ -947,7 +657,6 @@
                                         class="form-select select2 @error('pilihan_redaksi_ids') is-invalid @enderror"
                                         multiple>
                                         @php
-                                            // Ambil nilai terpilih: dari old() jika ada, jika tidak dari relasi permohonan
                                             $selectedRedaksi = old('pilihan_redaksi_ids');
                                             if (is_null($selectedRedaksi) && isset($permohonan)) {
                                                 $selectedRedaksi = $permohonan->templateDocs->pluck('id')->toArray();

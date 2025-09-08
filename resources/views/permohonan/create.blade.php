@@ -4,16 +4,11 @@
 
 @section('page-script')
     <script>
-        // Inisialisasi awal (cukup sekali)
-        $('.select2').select2({
-            width: '100%',
-            dropdownParent: $('.select2').parent()
-        });
+        $('.select2').select2();
 
         const PROVINSI_ID_DEFAULT = '35';
         const KABUPATEN_ID_DEFAULT = '3508';
 
-        // --- FUNGSI HELPER (SAMA PERSIS, TIDAK USAH DIUBAH) ---
         function reloadSelect2($select, options, placeholder = '') {
             $select.html(options);
             $select.select2({
@@ -48,7 +43,6 @@
             }
         }
 
-        // --- FUNGSI UNTUK MENGAKTIFKAN EVENT LISTENER (SAMA PERSIS) ---
         function bindLocationChangeEvents() {
             $('.location-group').each(function() {
                 const $group = $(this);
@@ -99,21 +93,17 @@
         }
 
 
-        // --- PROSES UTAMA SAAT DOKUMEN SIAP (VERSI CREATE) ---
         $(document).ready(async function() {
-            // 1. Inisialisasi dropdown pengusul (hanya provinsi)
             const $pengusulGroup = $('.location-group').eq(0);
             await populateSelect($pengusulGroup.find('.provinsi'), '/data-indonesia/provinsi.json',
                 '-- Pilih Provinsi --');
 
-            // 2. Inisialisasi dropdown usaha (langsung kecamatan)
             const $usahaGroup = $('.location-group').eq(1);
             $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
             $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
             await populateSelect($usahaGroup.find('.kecamatan'),
                 `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`, '-- Pilih Kecamatan --');
 
-            // 3. Setelah semua siap, BARU aktifkan event listener
             bindLocationChangeEvents();
         });
     </script>
@@ -161,7 +151,6 @@
             let currentOverlay = null;
 
             google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
-                // Remove previous overlay if exists
                 if (currentOverlay) {
                     currentOverlay.setMap(null);
                 }
@@ -193,7 +182,7 @@
                 } else if (event.type === "polygon") {
                     const path = event.overlay.getPath().getArray();
                     const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                    coordinates.push([path[0].lng(), path[0].lat()]); // close loop
+                    coordinates.push([path[0].lng(), path[0].lat()]);
                     geojson = {
                         type: "Feature",
                         geometry: {
@@ -204,10 +193,8 @@
                     };
                 }
 
-                // simpan ke hidden input
                 document.getElementById("json_geometry").value = JSON.stringify(geojson);
 
-                // zoom ke area overlay
                 if (event.type === "marker") {
                     map.setCenter(event.overlay.getPosition());
                     map.setZoom(16);
@@ -544,16 +531,12 @@
                                     <select name="pilihan_redaksi_ids[]" id="pilihan_redaksi_ids"
                                         class="form-select select2 @error('pilihan_redaksi_ids') is-invalid @enderror"
                                         multiple>
-                                        {{-- <option value="SITR" {{ is_array(old('pilihan_redaksi_ids')) && in_array('SITR', old('pilihan_redaksi_ids')) ? 'selected' : '' }}>SITR</option>
-                                        <option value="RDTR" {{ is_array(old('pilihan_redaksi_ids')) && in_array('RDTR', old('pilihan_redaksi_ids')) ? 'selected' : '' }}>RDTR</option> --}}
                                         @foreach ($templateDocs as $templateDoc)
                                             <option value="{{ $templateDoc->id }}"
                                                 {{ is_array(old('pilihan_redaksi_ids')) && in_array($templateDoc->id, old('pilihan_redaksi_ids')) ? 'selected' : '' }}>
                                                 {{ $templateDoc->var_nama }} ({{ $templateDoc->enum_jenis }})</option>
                                         @endforeach
                                     </select>
-                                    {{-- <small class="form-text text-muted">Tekan Ctrl (atau Cmd di Mac) untuk memilih lebih
-                                        dari satu.</small> --}}
                                     @errorFeedback('pilihan_redaksi_ids')
                                 </div>
                             </div>
