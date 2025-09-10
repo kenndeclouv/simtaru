@@ -10,19 +10,18 @@ use App\Models\PermohonanTemplateDoc;
 use App\Models\TemplateDocs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\TemplateProcessor;
+use Exception;
 use Yajra\DataTables\Facades\DataTables;
 
 class PermohonanController extends Controller
 {
-    /**
-     * Terapkan middleware permission di sini.
-     */
     public function __construct()
     {
-        // User harus login untuk semua method
         $this->middleware('auth');
 
-        // Terapkan permission spesifik untuk setiap method
         $this->middleware('can:view permohonan')->only(['index', 'show']);
         $this->middleware('can:create permohonan')->only(['create', 'store']);
         $this->middleware('can:edit permohonan')->only(['edit', 'update']);
@@ -35,21 +34,16 @@ class PermohonanController extends Controller
             $query = Permohonan::query();
             return DataTables::of($query)
                 ->addColumn('var_kabupaten', function ($row) {
-                    // Pastikan $row->var_kabupaten tidak kosong
                     if (empty($row->var_kabupaten)) {
                         return '-';
                     }
 
-                    // 1. Ambil ID Kabupaten dari baris data
                     $kabupatenId = $row->var_kabupaten;
 
-                    // 2. Ekstrak ID Provinsi (2 digit pertama)
                     $provinsiId = substr($kabupatenId, 0, 2);
 
-                    // 3. Panggil helper untuk mengambil semua data kabupaten di provinsi itu
                     $semuaKabupaten = getKabupaten($provinsiId);
 
-                    // 4. Cari nama kabupaten yang cocok berdasarkan ID
                     $namaKabupaten = collect($semuaKabupaten)->firstWhere('id', $kabupatenId)['nama'] ?? '(Tidak Ditemukan)';
 
                     return $namaKabupaten;
@@ -76,8 +70,6 @@ class PermohonanController extends Controller
     {
         $validated = $request->validated();
 
-        // dd($validated);
-        // generate nomor permohonan otomatis
         $tahun = now()->year;
         $last = Permohonan::latest()->first()->id ?? 0 + 1;
         $preFixNomorPermohonan = KeyStorage::where('var_key', 'preFixNomorPermohonan')->first()->var_value;
@@ -105,7 +97,8 @@ class PermohonanController extends Controller
     public function edit(Permohonan $permohonan)
     {
         $templateDocs = TemplateDocs::all();
-        return view('permohonan.edit', compact('permohonan', 'templateDocs'));
+        $keyStorages = KeyStorage::all();
+        return view('permohonan.edit', compact('permohonan', 'templateDocs', 'keyStorages'));
     }
 
     public function update(PermohonanRequest $request, Permohonan $permohonan)
@@ -114,11 +107,8 @@ class PermohonanController extends Controller
 
         $permohonan->update($validated);
 
-        // Update relasi PermohonanTemplateDoc
         if (isset($validated['pilihan_redaksi_ids'])) {
-            // Hapus relasi lama
             $permohonan->templateDocs()->detach();
-            // Tambah relasi baru
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
                 $template_doc = TemplateDocs::find($template_doc_id);
                 if ($template_doc) {
@@ -137,82 +127,88 @@ class PermohonanController extends Controller
     {
         $permohonan = Permohonan::findOrFail($id);
 
-        // Array untuk menampung nama-nama wilayah
-        $namaWilayah = [];
-
-        // --- Cari nama untuk ALAMAT PENGUSUL ---
-        if ($permohonan->var_provinsi) {
-            $namaWilayah['provinsi'] = $this->findWilayahNameById('data-indonesia/provinsi.json', $permohonan->var_provinsi);
-        }
-        if ($permohonan->var_kabupaten) {
-            $namaWilayah['kabupaten'] = $this->findWilayahNameById("data-indonesia/kabupaten/{$permohonan->var_provinsi}.json", $permohonan->var_kabupaten);
-        }
-        if ($permohonan->var_kecamatan) {
-            $namaWilayah['kecamatan'] = $this->findWilayahNameById("data-indonesia/kecamatan/{$permohonan->var_kabupaten}.json", $permohonan->var_kecamatan);
-        }
-        if ($permohonan->var_kelurahan) {
-            $namaWilayah['kelurahan'] = $this->findWilayahNameById("data-indonesia/kelurahan/{$permohonan->var_kecamatan}.json", $permohonan->var_kelurahan);
-        }
-
-        // --- Cari nama untuk ALAMAT USAHA ---
-        if ($permohonan->var_kecamatan_usaha) {
-            // Asumsi `var_kabupaten_usaha` juga tersimpan dari form edit/create
-            $namaWilayah['kecamatan_usaha'] = $this->findWilayahNameById("data-indonesia/kecamatan/{$permohonan->var_kabupaten_usaha}.json", $permohonan->var_kecamatan_usaha);
-        }
-        if ($permohonan->var_kelurahan_usaha) {
-            $namaWilayah['kelurahan_usaha'] = $this->findWilayahNameById("data-indonesia/kelurahan/{$permohonan->var_kecamatan_usaha}.json", $permohonan->var_kelurahan_usaha);
-        }
 
         return view('permohonan.show', [
             'permohonan' => $permohonan,
-            'namaWilayah' => $namaWilayah, // Kirim data nama wilayah ke view
         ]);
     }
 
-    // destroy
     public function destroy(Permohonan $permohonan)
     {
         $permohonan->delete();
         return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil dihapus.');
     }
 
-    // approve
     public function status(Permohonan $permohonan, Request $request)
     {
 
-        // upload lampiran
         $lampiranName = null;
-        if ($request->hasFile('var_lampiran')) {
-            $lampiran = $request->file('var_lampiran');
+        if ($request->hasFile('lampiran')) {
+            $lampiran = $request->file('lampiran');
             $lampiranName = time() . '_' . $lampiran->getClientOriginalName();
             $lampiran->storeAs('uploads', $lampiranName);
         }
 
         $permohonan->update([
             'enum_status' => $request->status,
-            'date_tanggal_pengesahan' => now(),
-            'text_catatan' => $request->text_catatan,
+            'date_tanggal_pengesahan' => $request->status === 'approved' ? now() : null,
+            'text_catatan' => $request->catatan,
             'var_lampiran' => $lampiranName,
         ]);
-        return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil diubah status menjadi ' . $request->status . '.');
+        return redirect()->route('permohonan.index')->with('success', 'Status permohonan berhasil diubah.');
     }
 
-    /**
-     * Fungsi helper untuk mencari nama wilayah dari file JSON.
-     */
-    private function findWilayahNameById($filePath, $id)
+    public function generateDocuments(Permohonan $permohonan)
     {
-        $fullPath = public_path($filePath);
+        $templates = $permohonan->templateDocs;
 
-        if (!File::exists($fullPath)) {
-            return $id; // Jika file tidak ada, kembalikan ID-nya saja
+        $replacementData = $permohonan->toArray();
+
+        $replacementData['var_provinsi'] = $permohonan->nama_provinsi;
+        $replacementData['var_kabupaten'] = $permohonan->nama_kabupaten;
+        $replacementData['var_kecamatan'] = $permohonan->nama_kecamatan;
+        $replacementData['var_kelurahan'] = $permohonan->nama_kelurahan;
+        $replacementData['var_kecamatan_usaha'] = $permohonan->nama_kecamatan_usaha;
+        $replacementData['var_kelurahan_usaha'] = $permohonan->nama_kelurahan_usaha;
+
+
+        foreach ($templates as $template) {
+            try {
+                $templatePath = Storage::disk('public')->path($template->var_file_path);
+
+                if (!file_exists($templatePath)) {
+                    Log::error("File template tidak ditemukan: {$templatePath}");
+                    continue;
+                }
+
+                $templateProcessor = new TemplateProcessor($templatePath);
+                $placeholders = $template->placeholders->pluck('var_key')->toArray();
+
+                $valuesToSet = [];
+                foreach ($placeholders as $key) {
+                    $valuesToSet[$key] = $replacementData[$key] ?? '';
+                }
+
+                $templateProcessor->setValues($valuesToSet);
+
+                $generatedDir = "generated_documents/{$permohonan->id}";
+                $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.docx';
+                $newFilePath = "{$generatedDir}/{$newFileName}";
+
+                $tempFile = tempnam(sys_get_temp_dir(), 'phpword');
+                $templateProcessor->saveAs($tempFile);
+                Storage::disk('public')->put($newFilePath, file_get_contents($tempFile));
+                unlink($tempFile);
+
+                $permohonan->templateDocs()->updateExistingPivot($template->id, [
+                    'var_generated_file_path' => $newFilePath
+                ]);
+            } catch (Exception $e) {
+                Log::error("Gagal generate dokumen: " . $e->getMessage());
+                return redirect()->back()->with('error', 'Gagal generate: ' . $template->var_nama . ' - ' . $e->getMessage());
+            }
         }
 
-        $data = json_decode(File::get($fullPath), true);
-
-        // Cari array yang cocok berdasarkan ID
-        $found = collect($data)->firstWhere('id', $id);
-
-        return $found ? $found['nama'] : $id; // Jika ketemu, kembalikan 'nama', jika tidak, kembalikan ID
+        return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate!');
     }
 }

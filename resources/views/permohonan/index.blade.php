@@ -4,6 +4,9 @@
 @section('page-script')
     <script>
         document.addEventListener("DOMContentLoaded", function(e) {
+            $('.select2').select2({
+                dropdownParent: '#statusModal'
+            });
             let a = document.querySelector(".dt-scrollableTable");
             a && new DataTable(a, {
                 processing: !0,
@@ -30,14 +33,16 @@
                         title: 'Tgl Permohonan',
                     },
                     {
-                        data: 'var_nomor_pengesahan',
+                        data: 'enum_status',
                         title: 'Status',
                         orderable: false,
                         searchable: false,
                         render: function(data, type, row) {
-                            return data ?
+                            return data === 'approved' ?
                                 '<span class="badge bg-label-success">Selesai</span>' :
-                                '<span class="badge bg-label-warning">Diproses</span>';
+                                data === 'pending' ?
+                                '<span class="badge bg-label-warning">Diproses</span>' :
+                                '<span class="badge bg-label-danger">Ditolak</span>';
                         }
                     },
                     {
@@ -46,36 +51,38 @@
                         orderable: false,
                         searchable: false,
                         render: function(data, type, row) {
-                            var showUrl = '/permohonan/' + row.id;
-                            var editUrl = '/permohonan/' + row.id + '/edit';
-
-                            // --- PERUBAHAN DI SINI ---
-                            var deleteUrl = '/permohonan/' + row.id;
-                            // Kita simpan nama pengusul untuk ditampilkan di Swal
+                            var showUrl = `/permohonan/${row.id}`;
+                            var editUrl = `/permohonan/${row.id}/edit`;
+                            var deleteUrl = `/permohonan/${row.id}`;
                             var namaPengusul = row.var_nama;
 
-                            return `
-                                <div class="d-flex align-items-center">
-                                    <a href="${showUrl}" class="btn btn-sm btn-info me-1" data-bs-toggle="tooltip" title="Lihat Permohonan">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    
-                                    @can('edit permohonan')
-                                    <a href="${editUrl}" class="btn btn-sm btn-warning me-1" data-bs-toggle="tooltip" title="Edit Permohonan">
-                                        <i class="fas fa-pen-to-square"></i>
-                                    </a>
-                                    @endcan
+                            // Siapkan tombol-tombolnya
+                            let buttons = `
+                                    <div class="d-flex align-items-center">
+                                        <a href="${showUrl}" class="btn btn-sm btn-info me-1" data-bs-toggle="tooltip" title="Lihat Permohonan"><i class="fas fa-eye"></i></a>
+                                `;
 
-                                    @can('delete permohonan')
-                                    <a href="javascript:;" class="btn btn-sm btn-danger btn-delete" 
-                                    data-url="${deleteUrl}" 
-                                    data-name="${namaPengusul}" 
-                                    data-bs-toggle="tooltip" title="Hapus Permohonan">
+                            @can('edit permohonan')
+                                buttons += `
+                                    <div data-bs-toggle="tooltip" title="Ubah Status Permohonan">
+                                        <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#statusModal" data-id="${row.id}" data-status="${row.enum_status}">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </div>
+                                    <a href="${editUrl}" class="btn btn-sm btn-warning me-1" data-bs-toggle="tooltip" title="Edit Permohonan"><i class="fas fa-pen-to-square"></i></a>
+                                `;
+                            @endcan
+
+                            @can('delete permohonan')
+                                buttons += `
+                                    <a href="javascript:;" class="btn btn-sm btn-danger btn-delete" data-url="${deleteUrl}" data-name="${namaPengusul}" data-bs-toggle="tooltip" title="Hapus Permohonan">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </a>
-                                    @endcan
-                                </div>
-                            `;
+                                `;
+                            @endcan
+
+                            buttons += `</div>`;
+                            return buttons;
                         }
                     }
                 ],
@@ -117,6 +124,27 @@
                     });
                 },
             });
+            const statusModal = document.getElementById('statusModal');
+            statusModal.addEventListener('show.bs.modal', function(event) {
+                // Tombol mana yang di-klik?
+                const button = event.relatedTarget;
+
+                // Ambil ID dan status dari tombol
+                const permohonanId = button.getAttribute('data-id');
+                const currentStatus = button.getAttribute('data-status');
+
+                // Buat URL action untuk form
+                const formAction = `/permohonan/${permohonanId}/status`;
+
+                // Cari form di dalam modal dan set action-nya
+                const form = statusModal.querySelector('form');
+                form.setAttribute('action', formAction);
+
+                // Set nilai default untuk select status
+                const statusSelect = statusModal.querySelector('#status');
+                $(statusSelect).val(currentStatus).trigger('change'); // Pakai jQuery untuk Select2
+            });
+
             $('.dt-scrollableTable').on('click', '.btn-delete', function(e) {
                 e.preventDefault(); // Mencegah aksi default link
 
@@ -192,6 +220,40 @@
                 </table>
             </div>
         </div>
-        <!--/ Scrollable -->
+    </div>
+
+    {{-- modal status --}}
+    <div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="statusModalLabel">Ubah Status Permohonan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="statusForm" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        @method('PUT')
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select name="status" id="status" class="form-select select2">
+                                <option value="approved">Selesai</option>
+                                <option value="pending">Diproses</option>
+                                <option value="rejected">Ditolak</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="catatan" class="form-label">Catatan</label>
+                            <textarea name="catatan" id="catatan" class="form-control"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="lampiran" class="form-label">Lampiran</label>
+                            <input type="file" name="lampiran" id="lampiran" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Ubah Status</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection

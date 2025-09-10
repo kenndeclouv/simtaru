@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Illuminate\Database\Seeder;
 
 class PermissionSeeder extends Seeder
 {
@@ -18,26 +17,33 @@ class PermissionSeeder extends Seeder
         foreach ($roles as $role) {
             Role::createOrFirst(['name' => $role]);
         }
-
-        $features = [
+        $commonFeatures = [
             'permohonan',
             'template',
             'roles',
             'key-storage',
             'users',
+            'logs',
         ];
         $actions = ['view', 'create', 'edit', 'delete'];
-
+        $specialFeatures = [
+            'permohonan' => ['approve'],
+            'logs' => ['download'],
+            'performance' => ['view'],
+            'route-list' => ['view'],
+            'audit-trail' => ['view'],
+        ];
+        // create permissions
         $permissions = [];
-        foreach ($features as $feature) {
+        foreach ($commonFeatures as $feature) {
             foreach ($actions as $action) {
                 $permissions[] = Permission::createOrFirst(['name' => $action . ' ' . $feature]);
             }
         }
-
-        $permissions = Permission::all();
-        foreach ($permissions as $permission) {
-            $permission->assignRole('Super Admin');
+        foreach ($specialFeatures as $feature => $actions) {
+            foreach ($actions as $action) {
+                $permissions[] = Permission::createOrFirst(['name' => $action . ' ' . $feature]);
+            }
         }
     }
 }

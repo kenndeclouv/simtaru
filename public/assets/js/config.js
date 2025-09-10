@@ -1,6 +1,6 @@
 (window.config = {
   colors: {
-    primary: window.Helpers.getCssVar("primary"),
+    primary: document.documentElement.getAttribute("data-primary-color"),
     secondary: window.Helpers.getCssVar("secondary"),
     success: window.Helpers.getCssVar("success"),
     info: window.Helpers.getCssVar("info"),

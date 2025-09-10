@@ -57,5 +57,15 @@ class DatabaseSeeder extends Seeder
             'var_value' => '/Permohonan.SITR/427.56/',
             'var_description' => 'Postfix nomor permohonan',
         ]);
+        KeyStorage::create([
+            'var_key' => 'provinsiUsahaDefaultId',
+            'var_value' => '35',
+            'var_description' => 'Provinsi usaha default id',
+        ]);
+        KeyStorage::create([
+            'var_key' => 'kabupatenUsahaDefaultId',
+            'var_value' => '3508',
+            'var_description' => 'Kabupaten usaha default id',
+        ]);
     }
 }

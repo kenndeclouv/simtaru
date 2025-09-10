@@ -65,6 +65,13 @@ class TemplateDocsController extends Controller
         return redirect()->route('template.index')->with('success', 'Template berhasil ditambahkan dengan ' . count($placeholders) . ' placeholder ditemukan.');
     }
 
+
+    public function show(TemplateDocs $template)
+    {
+        $placeholders = TemplateDocsPlaceholder::where('fk_template_docs_id', $template->id)->get();
+        return view('template.show', compact('template', 'placeholders'));
+    }
+
     public function edit(TemplateDocs $template)
     {
         return view('template.edit', compact('template'));

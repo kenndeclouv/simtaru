@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class TemplateDocs extends Model
 {
     protected $guarded = ["id"];
-    public function templateDocsPlaceholders()
+    public function placeholders()
     {
         return $this->hasMany(TemplateDocsPlaceholder::class, 'fk_template_docs_id');
     }
 
-    public function permohonan()
+    public function permohonans()
     {
-        return $this->belongsToMany(Permohonan::class, "permohonans_template_docs", "fk_template_docs_id", "fk_permohonan_id");
+        return $this->belongsToMany(Permohonan::class, 'permohonans_template_docs', 'fk_template_docs_id', 'fk_permohonan_id');
     }
 }

@@ -2,6 +2,8 @@
 @section('title', 'Detail Permohonan SITR')
 
 @section('page-script')
+
+    <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script>
 @endsection
 
 @section('content')
@@ -11,6 +13,7 @@
         <div class="card">
             <div class="card-header border-bottom mb-3">
                 <h5 class="mb-0">Detail Permohonan</h5>
+                
             </div>
             <div class="card-body">
                 <div class="row mb-4">
@@ -27,16 +30,16 @@
                             <dd class="col-sm-7">: {{ $permohonan->text_alamat }}</dd>
 
                             <dt class="col-sm-5">Provinsi</dt>
-                            <dd class="col-sm-7">: {{ $namaWilayah['provinsi'] ?? $permohonan->var_provinsi }}</dd>
-                            
+                            <dd class="col-sm-7">: {{ $permohonan->nama_provinsi }}</dd>
+
                             <dt class="col-sm-5">Kabupaten</dt>
-                            <dd class="col-sm-7">: {{ $namaWilayah['kabupaten'] ?? $permohonan->var_kabupaten }}</dd>
+                            <dd class="col-sm-7">: {{ $permohonan->nama_kabupaten }}</dd>
 
                             <dt class="col-sm-5">Kecamatan</dt>
-                            <dd class="col-sm-7">: {{ $namaWilayah['kecamatan'] ?? $permohonan->var_kecamatan }}</dd>
+                            <dd class="col-sm-7">: {{ $permohonan->nama_kecamatan }}</dd>
 
                             <dt class="col-sm-5">Kelurahan</dt>
-                            <dd class="col-sm-7">: {{ $namaWilayah['kelurahan'] ?? $permohonan->var_kelurahan }}</dd>
+                            <dd class="col-sm-7">: {{ $permohonan->nama_kelurahan }}</dd>
 
                             <dt class="col-sm-5">Email</dt>
                             <dd class="col-sm-7">: {{ $permohonan->var_email }}</dd>
@@ -61,10 +64,12 @@
                             <dd class="col-sm-7">: {{ $permohonan->text_alamat_usaha }}</dd>
 
                             <dt class="col-sm-5">Kecamatan Usaha</dt>
-                            <dd class="col-sm-7">: {{ $namaWilayah['kecamatan_usaha'] ?? $permohonan->var_kecamatan_usaha }}</dd>
+                            <dd class="col-sm-7">:
+                                {{ $permohonan->nama_kecamatan_usaha }}</dd>
 
                             <dt class="col-sm-5">Kelurahan Usaha</dt>
-                            <dd class="col-sm-7">: {{ $namaWilayah['kelurahan_usaha'] ?? $permohonan->var_kelurahan_usaha }}</dd>
+                            <dd class="col-sm-7">:
+                                {{ $permohonan->nama_kelurahan_usaha }}</dd>
 
                             <dt class="col-sm-5">Rencana Usaha</dt>
                             <dd class="col-sm-7">: {{ $permohonan->var_rencana_usaha }}</dd>
@@ -102,9 +107,7 @@
                                     }
                                     if (!geojson) return;
 
-                                    // Find center of geometry
                                     function getCenter(geojson) {
-                                        // Only supports Polygon/Point/LineString for simplicity
                                         if (geojson.type === 'Point') {
                                             return {
                                                 lat: geojson.coordinates[1],
@@ -133,7 +136,6 @@
                                                 lng
                                             };
                                         }
-                                        // Default fallback
                                         return {
                                             lat: -7.797068,
                                             lng: 110.370529
@@ -149,7 +151,6 @@
 
                                     map.data.addGeoJson(geojson);
 
-                                    // Style
                                     map.data.setStyle({
                                         fillColor: '#1976d2',
                                         strokeColor: '#1976d2',
@@ -157,7 +158,6 @@
                                         fillOpacity: 0.2
                                     });
 
-                                    // Fit bounds
                                     var bounds = new google.maps.LatLngBounds();
                                     map.data.forEach(function(feature) {
                                         feature.getGeometry().forEachLatLng(function(latlng) {
@@ -196,25 +196,137 @@
 
                 <div class="row mb-4">
                     <div class="col-md-12">
-                        <h5 class="fw-bold"># Pilihan Redaksi</h5>
+                        {{-- <h5 class="fw-bold"># Pilihan Redaksi</h5>
                         <dl class="row mb-0">
                             <dt class="col-sm-2">Redaksi</dt>
                             <dd class="col-sm-10">
-                                @if ($permohonan->templateDocs && $permohonan->templateDocs->count())
-                                    <ul class="mb-0">
-                                        @foreach ($permohonan->templateDocs as $templateDoc)
-                                            <li>{{ $templateDoc->var_nama }} ({{ $templateDoc->enum_jenis }})</li>
-                                        @endforeach
-                                    </ul>
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endif
+                                @forelse ($permohonan->templateDocs as $doc)
+                                    <li>
+                                        {{ $doc->var_nama }} -
+                                        @if ($doc->pivot->var_generated_file_path)
+                                            (<a href="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}"
+                                                target="_blank">Download</a>
+                                            <a href="#" class="text-secondary preview-btn" data-bs-toggle="modal"
+                                                data-bs-target="#previewModal"
+                                                data-file-url="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}">
+                                                Preview
+                                            </a>)
+                                        @else
+                                            <span class="text-muted">Belum di-generate</span>
+                                        @endif
+                                    </li>
+                                @empty
+                                    <li>Tidak ada template dokumen yang terhubung.</li>
+                                @endforelse
                             </dd>
-                        </dl>
+                        </dl> --}}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="fw-bold mt-4"># Dokumen Terkait</h5>
+                            <form action="{{ route('permohonan.generateDocuments', $permohonan->id) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bx bx-file me-1"></i> Generate Dokumen
+                                </button>
+                            </form>
+                        </div>
+                        <div class="table-responsive text-nowrap">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>No.</th>
+                                        <th>Nama Dokumen</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="table-border-bottom-0">
+                                    @forelse ($permohonan->templateDocs as $doc)
+                                        <tr>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td><strong>{{ $doc->var_nama }}</strong></td>
+                                            <td>
+                                                @if ($doc->pivot->var_generated_file_path)
+                                                    <span class="badge bg-label-success">Sudah Dibuat</span>
+                                                @else
+                                                    <span class="badge bg-label-warning">Belum Dibuat</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if ($doc->pivot->var_generated_file_path)
+                                                    <div class="d-flex">
+                                                        <a href="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}"
+                                                            target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                                            <i class="bx bx-download me-1"></i> Download
+                                                        </a>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-secondary preview-btn"
+                                                            data-bs-toggle="modal" data-bs-target="#previewModal"
+                                                            data-file-url="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}">
+                                                            <i class="bx bx-show me-1"></i> Preview
+                                                        </button>
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center">Tidak ada template dokumen yang
+                                                terhubung.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
             </div>
         </div>
     </div>
+    <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header mb-4">
+                    <h5 class="modal-title" id="previewModalLabel">Document Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {{-- Konten preview akan dimuat di sini oleh JavaScript --}}
+                    <div id="modal-preview-content" class="overflow-hidden rounded" style="min-height: 400px;"></div>
+                </div>
+                <div class="modal-footer mt-4">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const previewModal = document.getElementById('previewModal');
+
+            previewModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const fileUrl = button.getAttribute('data-file-url');
+
+                const previewContainer = document.getElementById('modal-preview-content');
+
+                previewContainer.innerHTML = '<p class="text-center"><em>Loading preview...</em></p>';
+
+                fetch(fileUrl)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        docx.renderAsync(blob, previewContainer)
+                            .then(x => console.log("Preview berhasil dirender di modal."));
+                    })
+                    .catch(error => {
+                        console.error('Gagal memuat preview di modal:', error);
+                        previewContainer.innerHTML =
+                            '<p class="text-center text-danger">Gagal memuat file preview.</p>';
+                    });
+            });
+        });
+    </script>
 @endsection

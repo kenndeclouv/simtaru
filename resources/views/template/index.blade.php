@@ -79,6 +79,12 @@
                                     </a>
                                 </td>
                                 <td>
+                                    @can('view template')
+                                        <a href="{{ route('template.show', $template->id) }}" class="btn btn-sm btn-info"
+                                            data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Detail">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                    @endcan
                                     @can('edit template')
                                         <a href="{{ route('template.edit', $template->id) }}" class="btn btn-sm btn-warning"
                                             data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Edit">

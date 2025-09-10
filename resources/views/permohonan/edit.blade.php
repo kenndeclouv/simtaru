@@ -6,8 +6,8 @@
     <script>
         $('.select2').select2();
 
-        const PROVINSI_ID_DEFAULT = '35';
-        const KABUPATEN_ID_DEFAULT = '3508';
+        const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
+        const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
 
         function reloadSelect2($select, options, placeholder = '') {
             $select.html(options);

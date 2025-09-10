@@ -32,7 +32,7 @@
                 <a href="{{ route('permohonan.index') }}" class="menu-link">
                     <i class="menu-icon fa-solid fa-sheet-plastic fs-6"></i>
                     <div class="text-truncate">
-                        Permohonan SITR
+                        Permohonan
                     </div>
                 </a>
             </li>
@@ -81,6 +81,46 @@
                     <i class="menu-icon fa-solid fa-key fs-6"></i>
                     <div class="text-truncate">
                         Key Storage
+                    </div>
+                </a>
+            </li>
+        @endcan
+        @can('view audit-trail')
+            <li class="menu-item {{ request()->routeIs('audit.*') ? 'active' : '' }}">
+                <a href="{{ route('audit.index') }}" class="menu-link">
+                    <i class="menu-icon fa-solid fa-files fs-6"></i>
+                    <div class="text-truncate">
+                        Audit Trail
+                    </div>
+                </a>
+            </li>
+        @endcan
+        @can('view logs')
+            <li class="menu-item {{ request()->routeIs('logs.*') ? 'active' : '' }}">
+                <a href="{{ route('logs.index') }}" class="menu-link">
+                    <i class="menu-icon fa-solid fa-file-lines fs-6"></i>
+                    <div class="text-truncate">
+                        Logs
+                    </div>
+                </a>
+            </li>
+        @endcan
+        @can('view performance')
+            <li class="menu-item {{ request()->routeIs('performance.*') ? 'active' : '' }}">
+                <a href="{{ route('performance.index') }}" class="menu-link">
+                    <i class="menu-icon fa-solid fa-chart-line fs-6"></i>
+                    <div class="text-truncate">
+                        Performance
+                    </div>
+                </a>
+            </li>
+        @endcan
+        @can('view route-list')
+            <li class="menu-item {{ request()->routeIs('route-list.*') ? 'active' : '' }}">
+                <a href="{{ route('route-list.index') }}" class="menu-link">
+                    <i class="menu-icon fa-solid fa-route fs-6"></i>
+                    <div class="text-truncate">
+                        Route List
                     </div>
                 </a>
             </li>
