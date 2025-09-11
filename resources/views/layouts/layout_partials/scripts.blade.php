@@ -1,4 +1,15 @@
 <!-- Core JS -->
+<script>
+    if (!localStorage.getItem('templateCustomizer-vertical-menu-template--Theme')) {
+        localStorage.setItem('templateCustomizer-vertical-menu-template--Theme', '{{ config('app.style') }}');
+    }
+    if (!localStorage.getItem('templateCustomizer-vertical-menu-template--Color')) {
+        localStorage.setItem('templateCustomizer-vertical-menu-template--Color', '{{ config('app.primary_color') }}');
+    }
+    if (!localStorage.getItem('templateCustomizer-vertical-menu-template--SemiDark')) {
+        localStorage.setItem('templateCustomizer-vertical-menu-template--SemiDark', '{{ config('app.semi_dark') ? 'true' : 'false' }}');
+    }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous">
 </script>
