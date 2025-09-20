@@ -28,13 +28,26 @@
             <span class="menu-header-text">Menu</span>
         </li>
         @can('view permohonan')
-            <li class="menu-item {{ request()->routeIs('permohonan.*') ? 'active' : '' }}">
-                <a href="{{ route('permohonan.index') }}" class="menu-link">
+            <li class="menu-item {{ request()->routeIs('permohonan.*') ? 'active open' : '' }}">
+                <a href="" class="menu-link menu-toggle">
                     <i class="menu-icon fa-solid fa-sheet-plastic fs-6"></i>
                     <div class="text-truncate">
                         Permohonan
                     </div>
                 </a>
+                <ul class="menu-sub">
+                    <li
+                        class="menu-item {{ request('type') === 'sitr/rdtr' ? 'active' : '' }}">
+                        <a href="{{ route('permohonan.index') }}?type=sitr/rdtr" class="menu-link">
+                            <div>SITR/RDTR</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request('type') === 'kkpr' ? 'active' : '' }}">
+                        <a href="{{ route('permohonan.index') }}?type=kkpr" class="menu-link">
+                            <div>KKPR</div>
+                        </a>
+                    </li>
+                </ul>
             </li>
         @endcan
 
@@ -52,7 +65,8 @@
             </li>
         @endcan
         @can('view roles' || 'view users')
-            <li class="menu-item {{ request()->routeIs('roles.*') || request()->routeIs('users.*') ? 'active open' : '' }}">
+            <li
+                class="menu-item {{ request()->routeIs('roles.*') || request()->routeIs('users.*') ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon icon-base fa-solid fa-shield fs-6"></i>
                     <div>RBAC</div>

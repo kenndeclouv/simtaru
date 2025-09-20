@@ -24,10 +24,11 @@ use Illuminate\Notifications\Notifiable;
 use App\Models\Feature;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, HasApiTokens;
     protected $fillable = [
         'name',
         'username',

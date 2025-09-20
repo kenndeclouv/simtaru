@@ -9,13 +9,14 @@ use Illuminate\Support\Str;
 
 class MakeFormRequest extends Command
 {
-    protected $signature = 'make:form-req {table} {name}';
+    protected $signature = 'make:form-req {table} {name} {--force}';
     protected $description = 'Generate a FormRequest with validation rules and messages based on a table';
 
     public function handle()
     {
         $table = $this->argument('table');
         $name = $this->argument('name');
+        $isForce = $this->option('force');
 
         $rules = $this->generateValidationRules($table);
         $messages = $this->generateValidationMessages($rules);
@@ -26,7 +27,7 @@ class MakeFormRequest extends Command
         $filePath = app_path("Http/Requests/{$className}.php");
 
         // cek jika file sudah ada
-        if (file_exists($filePath)) {
+        if (file_exists($filePath) && !$isForce) {
             $this->error("FormRequest $className already exists.");
             return Command::FAILURE;
         }

@@ -31,7 +31,7 @@ Route::resource('template', TemplateDocsController::class);
 Route::resource('permohonan', PermohonanController::class);
 Route::post('permohonan/{permohonan}/generate-documents', [PermohonanController::class, 'generateDocuments'])->name('permohonan.generateDocuments');
 Route::put('permohonan/{permohonan}/status', [PermohonanController::class, 'status'])->name('permohonan.status');
-
+Route::get('permohonan/{permohonan}/download-kml', [PermohonanController::class, 'downloadKml'])->name('permohonan.downloadKml');
 Route::resource('roles', RoleController::class);
 
 Route::resource('key-storages', KeyStorageController::class);

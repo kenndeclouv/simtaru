@@ -53,7 +53,7 @@
                         <form id="formAuthentication" class="mb-6" action="{{ route('login') }}" method="POST">
                             @csrf
                             <div class="mb-6">
-                                <label for="email" class="form-label">email</label>
+                                <label for="email" class="form-label">Email</label>
                                 <input type="text" class="form-control" id="email" name="email"
                                     placeholder="Masukkan email" autofocus="on" value="{{ old('email') }}">
                             </div>

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Exception;
 use Yajra\DataTables\Facades\DataTables;
+use geoPHP;
 
 class PermohonanController extends Controller
 {
@@ -30,8 +31,9 @@ class PermohonanController extends Controller
 
     public function index(Request $request)
     {
+        $type = $request->type ?? 'sitr/rdtr';
         if ($request->ajax()) {
-            $query = Permohonan::query();
+            $query = Permohonan::where('var_type', $type)->orderBy('created_at', 'desc');
             return DataTables::of($query)
                 ->addColumn('var_kabupaten', function ($row) {
                     if (empty($row->var_kabupaten)) {
@@ -48,27 +50,33 @@ class PermohonanController extends Controller
 
                     return $namaKabupaten;
                 })
-                ->addColumn('status', function ($row) {
-                    return $row->var_nomor_pengesahan
-                        ? '<span class="badge bg-success">Selesai</span>'
-                        : '<span class="badge bg-warning">Diproses</span>';
-                })
+                // ->addColumn('status', function ($row) {
+                //     return $row->var_nomor_pengesahan
+                //         ? '<span class="badge bg-success">Selesai</span>'
+                //         : '<span class="badge bg-warning">Diproses</span>';
+                // })
                 ->rawColumns(['status'])
                 ->make(true);
         }
-        return view('permohonan.index');
+        return view('permohonan.index', compact('type'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $type = $request->type ?? 'sitr/rdtr';
         $keyStorages = KeyStorage::all();
-        $templateDocs = TemplateDocs::all();
-        return view('permohonan.create', compact('templateDocs', 'keyStorages'));
+        if ($type == 'sitr/rdtr') {
+            $templateDocs = TemplateDocs::where('enum_jenis', 'sitr')->orWhere('enum_jenis', 'rdtr')->get();
+        } else {
+            $templateDocs = TemplateDocs::where('enum_jenis', $type)->get();
+        }
+        return view('permohonan.create', compact('templateDocs', 'keyStorages', 'type'));
     }
 
     public function store(PermohonanRequest $request)
     {
         $validated = $request->validated();
+
 
         $tahun = now()->year;
         $last = Permohonan::latest()->first()->id ?? 0 + 1;
@@ -79,6 +87,7 @@ class PermohonanController extends Controller
 
         $validated['var_nomor_permohonan'] = "{$preFixNomorPermohonan}{$last}{$postFixNomorPermohonan}{$tahun}";
         $validated['var_nomor_pengesahan'] = "{$preFixNomorSurat}{$last}{$postFixNomorSurat}{$tahun}";
+        $validated['var_type'] = $validated['var_type'] ?? 'sitr/rdtr';
 
         $permohonan = Permohonan::create($validated);
 
@@ -91,14 +100,19 @@ class PermohonanController extends Controller
             ]);
         }
 
-        return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil disimpan.');
+        return redirect()->route('permohonan.index', ['type' => $validated['var_type']])->with('success', 'Permohonan berhasil disimpan.');
     }
 
-    public function edit(Permohonan $permohonan)
+    public function edit(Permohonan $permohonan, Request $request)
     {
-        $templateDocs = TemplateDocs::all();
+        $type = $request->type ?? 'sitr/rdtr';
+        if ($type == 'sitr/rdtr') {
+            $templateDocs = TemplateDocs::where('enum_jenis', 'sitr')->orWhere('enum_jenis', 'rdtr')->get();
+        } else {
+            $templateDocs = TemplateDocs::where('enum_jenis', $type)->get();
+        }
         $keyStorages = KeyStorage::all();
-        return view('permohonan.edit', compact('permohonan', 'templateDocs', 'keyStorages'));
+        return view('permohonan.edit', compact('permohonan', 'templateDocs', 'keyStorages', 'type'));
     }
 
     public function update(PermohonanRequest $request, Permohonan $permohonan)
@@ -120,7 +134,7 @@ class PermohonanController extends Controller
             }
         }
 
-        return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil diperbarui.');
+        return redirect()->route('permohonan.index', ['type' => $permohonan->var_type])->with('success', 'Permohonan berhasil diperbarui.');
     }
 
     public function show($id)
@@ -136,7 +150,7 @@ class PermohonanController extends Controller
     public function destroy(Permohonan $permohonan)
     {
         $permohonan->delete();
-        return redirect()->route('permohonan.index')->with('success', 'Permohonan berhasil dihapus.');
+        return redirect()->back()->with('success', 'Permohonan berhasil dihapus.');
     }
 
     public function status(Permohonan $permohonan, Request $request)
@@ -155,7 +169,7 @@ class PermohonanController extends Controller
             'text_catatan' => $request->catatan,
             'var_lampiran' => $lampiranName,
         ]);
-        return redirect()->route('permohonan.index')->with('success', 'Status permohonan berhasil diubah.');
+        return redirect()->back()->with('success', 'Status permohonan berhasil diubah.');
     }
 
     public function generateDocuments(Permohonan $permohonan)
@@ -210,5 +224,44 @@ class PermohonanController extends Controller
         }
 
         return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate!');
+    }
+
+    public function downloadKml(Permohonan $permohonan)
+    {
+        if (!$permohonan->json_geometry) {
+            return redirect()->back()->with('error', 'Data lokasi tidak ditemukan.');
+        }
+
+        try {
+            // 1. Load GeoJSON dari database
+            $geojson = geoPHP::load($permohonan->json_geometry, 'json');
+
+            // 2. Dapatkan HANYA potongan geometrinya saja
+            $geometryFragment = $geojson->out('kml');
+
+            // 3. Buat struktur KML lengkap secara manual (pakai HEREDOC biar rapi)
+            $fullKml = <<<KML
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Placemark>
+    <name>{$permohonan->var_nama_usaha}</name>
+    <description>Lokasi untuk permohonan {$permohonan->var_nomor_permohonan}</description>
+    {$geometryFragment}
+  </Placemark>
+</kml>
+KML;
+
+            // 4. Buat nama file
+            $fileName = 'lokasi_' . preg_replace('/[^A-Za-z0-9\-]/', '', $permohonan->var_nama_usaha) . '.kml';
+
+            // 5. Kembalikan file KML yang sudah lengkap
+            return response($fullKml, 200, [
+                'Content-Type' => 'application/vnd.google-earth.kml+xml',
+                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            ]);
+        } catch (Exception $e) {
+            Log::error('KML Generation Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal membuat file KML dari data lokasi.');
+        }
     }
 }

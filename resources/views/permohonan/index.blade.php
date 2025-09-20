@@ -4,6 +4,8 @@
 @section('page-script')
     <script>
         document.addEventListener("DOMContentLoaded", function(e) {
+            let type = new URLSearchParams(window.location.search).get('type');
+            console.log(type);
             $('.select2').select2({
                 dropdownParent: '#statusModal'
             });
@@ -11,23 +13,23 @@
             a && new DataTable(a, {
                 processing: !0,
                 serverSide: !0,
-                ajax: "{{ route('permohonan.index') }}",
+                ajax: "{{ route('permohonan.index') }}?type=" + type,
                 columns: [{
                         data: 'var_nama',
                         title: 'Nama'
                     },
-                    {
-                        data: 'var_nik',
-                        title: 'NIK'
-                    },
-                    {
-                        data: 'var_kabupaten',
-                        title: 'Kabupaten'
-                    },
-                    {
-                        data: 'var_rencana_usaha',
-                        title: 'Rencana Usaha'
-                    },
+                    @if ($type == 'sitr/rdtr')
+                        {
+                            data: 'var_nik',
+                            title: 'NIK'
+                        }, {
+                            data: 'var_kabupaten',
+                            title: 'Kabupaten'
+                        }, {
+                            data: 'var_rencana_usaha',
+                            title: 'Rencana Usaha'
+                        },
+                    @endif 
                     {
                         data: 'date_tanggal_permohonan',
                         title: 'Tgl Permohonan',
@@ -51,9 +53,9 @@
                         orderable: false,
                         searchable: false,
                         render: function(data, type, row) {
-                            var showUrl = `/permohonan/${row.id}`;
-                            var editUrl = `/permohonan/${row.id}/edit`;
-                            var deleteUrl = `/permohonan/${row.id}`;
+                            var showUrl = `/permohonan/${row.id}?type={{ $type }}`;
+                            var editUrl = `/permohonan/${row.id}/edit?type={{ $type }}`;
+                            var deleteUrl = `/permohonan/${row.id}?type={{ $type }}`;
                             var namaPengusul = row.var_nama;
 
                             // Siapkan tombol-tombolnya
@@ -194,14 +196,15 @@
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <x-breadcrumb :items="[['text' => 'Permohonan SITR']]" />
+        <x-breadcrumb :items="[['text' => 'Permohonan ' . strtoupper($type)]]" />
 
         <!-- Scrollable -->
         <div class="card">
             <div class="card-body d-block d-lg-flex border-bottom">
-                <h5 class="text-start">Permohonan Ijin Pemanfaatan Tata Ruang</h5>
+                <h5 class="text-start">Permohonan {{ strtoupper($type) }}</h5>
                 @can('create permohonan')
-                    <a href="{{ route('permohonan.create') }}" class="btn btn-primary ms-0 ms-lg-auto">Tambahkan Permohonan</a>
+                    <a href="{{ route('permohonan.create') }}?type={{ $type }}"
+                        class="btn btn-primary ms-0 ms-lg-auto">Tambahkan Permohonan</a>
                 @endcan
             </div>
             <div class="card-datatable text-nowrap">
@@ -210,9 +213,11 @@
                         <tr>
                             <th>Nama</th>
                             <th>NIK</th>
-                            <th>Kabupaten</th>
-                            <th>Rencana Usaha</th>
-                            <th>Tanggal Permohonan</th>
+                            @if ($type == 'sitr/rdtr')
+                                <th>Kabupaten</th>
+                                <th>Rencana Usaha</th>
+                                <th>Tanggal Permohonan</th>
+                            @endif
                             <th>Status</th>
                             <th>Aksi</th>
                         </tr>

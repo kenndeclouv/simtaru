@@ -10,33 +10,33 @@ return new class extends Migration {
         Schema::create('permohonans', function (Blueprint $table) {
             $table->id();
             // informasi pengusul
-            $table->string('var_nik', 20);
+            $table->string('var_nik', 20)->nullable();
             $table->string('var_nama');
             $table->text('text_alamat');
-            $table->string('var_provinsi');
-            $table->string('var_kabupaten');
-            $table->string('var_kecamatan');
-            $table->string('var_kelurahan');
-            $table->string('var_email');
+            $table->string('var_provinsi')->nullable();
+            $table->string('var_kabupaten')->nullable();
+            $table->string('var_kecamatan')->nullable();
+            $table->string('var_kelurahan')->nullable();
+            $table->string('var_email')->nullable();
             $table->string('var_no_telp')->nullable();
             $table->string('var_no_ponsel')->nullable();
 
             // data usaha
             $table->string('var_nama_usaha');
-            $table->string('var_bentuk_usaha');
+            $table->string('var_bentuk_usaha')->nullable();
             $table->text('text_alamat_usaha');
-            $table->string('var_kecamatan_usaha');
-            $table->string('var_kelurahan_usaha');
-            $table->string('var_rencana_usaha');
+            $table->string('var_kecamatan_usaha')->nullable();
+            $table->string('var_kelurahan_usaha')->nullable();
+            $table->string('var_rencana_usaha')->nullable();
             $table->decimal('dec_rencana_luas_lantai', 12, 2)->nullable();
 
             // geometri (simpen geojson biar fleksibel: point/line/polygon)
             $table->longText('json_geometry')->nullable(); // GeoJSON
-            // $table->string('var_gambar_area')->nullable(); // path ke file upload
+
 
             // administrasi
-            $table->string('var_nomor_permohonan');
-            $table->date('date_tanggal_permohonan');
+            $table->string('var_nomor_permohonan')->nullable();
+            $table->date('date_tanggal_permohonan')->nullable();
             $table->string('var_nomor_pengesahan')->nullable();
             $table->date('date_tanggal_pengesahan')->nullable();
 

@@ -4,218 +4,273 @@
 
 @section('page-script')
     <script>
-        $('.select2').select2();
-
-        const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
-        const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
-
-        function reloadSelect2($select, options, placeholder = '') {
-            $select.html(options);
-            $select.select2({
-                width: '100%',
-                placeholder: placeholder,
-                dropdownParent: $select.parent()
-            });
-        }
-
-        async function populateSelect($select, url, placeholder, selectedValue = null) {
-            $select.html('<option value="">Memuat...</option>').prop('disabled', true);
-            try {
-                const data = await $.getJSON(url);
-                let options = `<option value="">${placeholder}</option>`;
-                data.forEach(item => {
-                    options += `<option value="${item.id}">${item.nama}</option>`;
-                });
-
-                reloadSelect2($select, options, placeholder);
-
-                if (selectedValue) {
-                    setTimeout(function() {
-                        $select.val(selectedValue).trigger('change.select2');
-                    }, 50);
-                }
-
-                $select.prop('disabled', false);
-            } catch (error) {
-                console.error(`Gagal memuat data dari ${url}`, error);
-                $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
-                throw error;
-            }
-        }
-
-        function bindLocationChangeEvents() {
-            $('.location-group').each(function() {
-                const $group = $(this);
-                const $prov = $group.find('.provinsi');
-                const $kab = $group.find('.kabupaten');
-                const $kec = $group.find('.kecamatan');
-                const $kel = $group.find('.kelurahan');
-
-                $prov.on('change', function() {
-                    const provId = $(this).val();
-                    if (provId) {
-                        populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
-                            '-- Pilih Kabupaten --');
-                    } else {
-                        $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
-                            .trigger('change');
-                    }
-                    $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
-                        .trigger('change');
-                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                        .trigger('change');
-                });
-
-                $kab.on('change', function() {
-                    const kabId = $(this).val();
-                    if (kabId) {
-                        populateSelect($kec, `/data-indonesia/kecamatan/${kabId}.json`,
-                            '-- Pilih Kecamatan --');
-                    } else {
-                        $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
-                            .trigger('change');
-                    }
-                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                        .trigger('change');
-                });
-
-                $kec.on('change', function() {
-                    const kecId = $(this).val();
-                    if (kecId) {
-                        populateSelect($kel, `/data-indonesia/kelurahan/${kecId}.json`,
-                            '-- Pilih Kelurahan --');
-                    } else {
-                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                            .trigger('change');
-                    }
-                });
-            });
-        }
-
-
-        $(document).ready(async function() {
-            const $pengusulGroup = $('.location-group').eq(0);
-            await populateSelect($pengusulGroup.find('.provinsi'), '/data-indonesia/provinsi.json',
-                '-- Pilih Provinsi --');
-
-            const $usahaGroup = $('.location-group').eq(1);
-            $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
-            $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
-            await populateSelect($usahaGroup.find('.kecamatan'),
-                `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`, '-- Pilih Kecamatan --');
-
-            bindLocationChangeEvents();
+        $(document).ready(function() {
+            $('.select2').select2();
         });
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
-    </script>
-    <script>
-        setTimeout(function() {
-            const map = new google.maps.Map(document.getElementById("map"), {
-                center: {
-                    lat: -8.129955181277511,
-                    lng: 113.22306606906642
-                },
-                zoom: 11,
-                mapTypeId: "hybrid",
-            });
+    @if ($type == 'sitr/rdtr')
+        <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
+        <script>
+            const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
+            const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
 
-            const drawingManager = new google.maps.drawing.DrawingManager({
-                drawingMode: null,
-                drawingControl: true,
-                drawingControlOptions: {
-                    position: google.maps.ControlPosition.TOP_LEFT,
-                    drawingModes: ["marker", "polyline", "polygon"],
-                },
-                markerOptions: {
-                    draggable: true,
-                },
-                polylineOptions: {
-                    strokeColor: "#DAD155",
-                    strokeOpacity: 1.0,
-                    strokeWeight: 3,
-                    editable: true,
-                },
-                polygonOptions: {
-                    fillColor: "#DAD155",
-                    fillOpacity: 0.5,
-                    strokeWeight: 2,
-                    clickable: true,
-                    editable: true,
-                    zIndex: 1,
-                },
-            });
+            function reloadSelect2($select, options, placeholder = '') {
+                $select.html(options);
+                $select.select2({
+                    width: '100%',
+                    placeholder: placeholder,
+                    dropdownParent: $select.parent()
+                });
+            }
 
-            drawingManager.setMap(map);
+            async function populateSelect($select, url, placeholder, selectedValue = null) {
+                $select.html('<option value="">Memuat...</option>').prop('disabled', true);
+                try {
+                    const data = await $.getJSON(url);
+                    let options = `<option value="">${placeholder}</option>`;
+                    data.forEach(item => {
+                        options += `<option value="${item.id}">${item.nama}</option>`;
+                    });
 
-            let currentOverlay = null;
+                    reloadSelect2($select, options, placeholder);
 
-            google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
-                if (currentOverlay) {
-                    currentOverlay.setMap(null);
-                }
-                currentOverlay = event.overlay;
-
-                let geojson = null;
-
-                if (event.type === "marker") {
-                    const position = event.overlay.getPosition();
-                    geojson = {
-                        type: "Feature",
-                        geometry: {
-                            type: "Point",
-                            coordinates: [position.lng(), position.lat()]
-                        },
-                        properties: {}
-                    };
-                } else if (event.type === "polyline") {
-                    const path = event.overlay.getPath().getArray();
-                    const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                    geojson = {
-                        type: "Feature",
-                        geometry: {
-                            type: "LineString",
-                            coordinates: coordinates
-                        },
-                        properties: {}
-                    };
-                } else if (event.type === "polygon") {
-                    const path = event.overlay.getPath().getArray();
-                    const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                    coordinates.push([path[0].lng(), path[0].lat()]);
-                    geojson = {
-                        type: "Feature",
-                        geometry: {
-                            type: "Polygon",
-                            coordinates: [coordinates]
-                        },
-                        properties: {}
-                    };
-                }
-
-                document.getElementById("json_geometry").value = JSON.stringify(geojson);
-
-                if (event.type === "marker") {
-                    map.setCenter(event.overlay.getPosition());
-                    map.setZoom(16);
-                } else {
-                    const bounds = new google.maps.LatLngBounds();
-                    if (event.type === "polyline" || event.type === "polygon") {
-                        event.overlay.getPath().forEach(p => bounds.extend(p));
-                        map.fitBounds(bounds);
+                    if (selectedValue) {
+                        setTimeout(function() {
+                            $select.val(selectedValue).trigger('change.select2');
+                        }, 50);
                     }
+
+                    $select.prop('disabled', false);
+                } catch (error) {
+                    console.error(`Gagal memuat data dari ${url}`, error);
+                    $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
+                    throw error;
                 }
+            }
+
+            function bindLocationChangeEvents() {
+                $('.location-group').each(function() {
+                    const $group = $(this);
+                    const $prov = $group.find('.provinsi');
+                    const $kab = $group.find('.kabupaten');
+                    const $kec = $group.find('.kecamatan');
+                    const $kel = $group.find('.kelurahan');
+
+                    $prov.on('change', function() {
+                        const provId = $(this).val();
+                        if (provId) {
+                            populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
+                                '-- Pilih Kabupaten --');
+                        } else {
+                            $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
+                                .trigger('change');
+                        }
+                        $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
+                            .trigger('change');
+                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                            .trigger('change');
+                    });
+
+                    $kab.on('change', function() {
+                        const kabId = $(this).val();
+                        if (kabId) {
+                            populateSelect($kec, `/data-indonesia/kecamatan/${kabId}.json`,
+                                '-- Pilih Kecamatan --');
+                        } else {
+                            $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
+                                .trigger('change');
+                        }
+                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                            .trigger('change');
+                    });
+
+                    $kec.on('change', function() {
+                        const kecId = $(this).val();
+                        if (kecId) {
+                            populateSelect($kel, `/data-indonesia/kelurahan/${kecId}.json`,
+                                '-- Pilih Kelurahan --');
+                        } else {
+                            $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                                .trigger('change');
+                        }
+                    });
+                });
+            }
+
+
+            $(document).ready(async function() {
+                const $pengusulGroup = $('.location-group').eq(0);
+                await populateSelect($pengusulGroup.find('.provinsi'), '/data-indonesia/provinsi.json',
+                    '-- Pilih Provinsi --');
+
+                const $usahaGroup = $('.location-group').eq(1);
+                $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
+                $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
+                await populateSelect($usahaGroup.find('.kecamatan'),
+                    `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`, '-- Pilih Kecamatan --');
+
+                bindLocationChangeEvents();
             });
-        }, 500);
-    </script>
+        </script>
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
+        </script>
+        <script>
+            setTimeout(function() {
+                const map = new google.maps.Map(document.getElementById("map"), {
+                    center: {
+                        lat: -8.129955181277511,
+                        lng: 113.22306606906642
+                    },
+                    zoom: 11,
+                    mapTypeId: "hybrid",
+                });
+
+                const drawingManager = new google.maps.drawing.DrawingManager({
+                    drawingMode: null,
+                    drawingControl: true,
+                    drawingControlOptions: {
+                        position: google.maps.ControlPosition.TOP_LEFT,
+                        drawingModes: ["marker", "polyline", "polygon"],
+                    },
+                    markerOptions: {
+                        draggable: true,
+                    },
+                    polylineOptions: {
+                        strokeColor: "#DAD155",
+                        strokeOpacity: 1.0,
+                        strokeWeight: 3,
+                        editable: true,
+                    },
+                    polygonOptions: {
+                        fillColor: "#DAD155",
+                        fillOpacity: 0.5,
+                        strokeWeight: 2,
+                        clickable: true,
+                        editable: true,
+                        zIndex: 1,
+                    },
+                });
+
+                drawingManager.setMap(map);
+
+                let currentOverlay = null;
+
+                function clearMap() {
+                    if (currentOverlay) {
+                        currentOverlay.setMap(null);
+                        currentOverlay = null;
+                    }
+                    map.data.forEach(feature => map.data.remove(feature));
+                    $('#json_geometry').val('');
+                }
+
+                google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
+                    clearMap();
+                    $('#kml_file').val('');
+
+                    currentOverlay = event.overlay;
+
+                    let geojson = null;
+
+                    if (event.type === "marker") {
+                        const position = event.overlay.getPosition();
+                        geojson = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Point",
+                                coordinates: [position.lng(), position.lat()]
+                            },
+                            properties: {}
+                        };
+                    } else if (event.type === "polyline") {
+                        const path = event.overlay.getPath().getArray();
+                        const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
+                        geojson = {
+                            type: "Feature",
+                            geometry: {
+                                type: "LineString",
+                                coordinates: coordinates
+                            },
+                            properties: {}
+                        };
+                    } else if (event.type === "polygon") {
+                        const path = event.overlay.getPath().getArray();
+                        const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
+                        coordinates.push([path[0].lng(), path[0].lat()]);
+                        geojson = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Polygon",
+                                coordinates: [coordinates]
+                            },
+                            properties: {}
+                        };
+                    }
+
+                    document.getElementById("json_geometry").value = JSON.stringify(geojson);
+
+                    if (event.type === "marker") {
+                        map.setCenter(event.overlay.getPosition());
+                        map.setZoom(16);
+                    } else {
+                        const bounds = new google.maps.LatLngBounds();
+                        if (event.type === "polyline" || event.type === "polygon") {
+                            event.overlay.getPath().forEach(p => bounds.extend(p));
+                            map.fitBounds(bounds);
+                        }
+                    }
+                });
+
+                $('#kml_file').on('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const kmlText = event.target.result;
+                        const dom = (new DOMParser()).parseFromString(kmlText, 'text/xml');
+                        const geojson = toGeoJSON.kml(dom);
+
+                        if (geojson && geojson.features && geojson.features.length > 0) {
+                            clearMap();
+
+                            // Ambil feature pertama dan masukkan ke hidden input
+                            const firstFeature = geojson.features[0];
+                            $('#json_geometry').val(JSON.stringify(firstFeature));
+
+                            // Tampilkan semua feature di peta untuk preview
+                            map.data.addGeoJson(geojson);
+
+                            // Zoom ke area KML
+                            const bounds = new google.maps.LatLngBounds();
+                            map.data.forEach(feature => {
+                                feature.getGeometry().forEachLatLng(latlng => bounds.extend(
+                                    latlng));
+                            });
+                            map.fitBounds(bounds);
+                        } else {
+                            alert('Berkas KML tidak valid atau tidak berisi data koordinat.');
+                            $(this).val(''); // Reset input file jika error
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+
+            }, 500);
+        </script>
+    @endif
 @endsection
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <x-breadcrumb :items="[['text' => 'Permohonan SITR', 'url' => route('permohonan.index')], ['text' => 'Tambah Permohonan']]" />
+        <x-breadcrumb :items="[
+            ['text' => 'Permohonan ' . strtoupper($type), 'url' => route('permohonan.index') . '?type=' . $type],
+            ['text' => 'Tambah Permohonan'],
+        ]" />
 
         <form action="{{ route('permohonan.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
+            <input type="hidden" name="var_type" value="{{ $type }}">
             <div class="row">
                 <div class="col-12 col-lg-6">
                     <div class="card h-100">
@@ -223,15 +278,17 @@
 
                         <div class="card-body">
 
-                            <div class="mb-4 row">
-                                <label for="var_nik" class="col-sm-3 col-form-label">NIK</label>
-                                <div class="col-sm-9">
-                                    <input type="text" name="var_nik" id="var_nik"
-                                        class="form-control  @error('var_nik') is-invalid @enderror"
-                                        value="{{ old('var_nik') }}" maxlength="16" required>
-                                    @errorFeedback('var_nik')
+                            @if ($type == 'sitr/rdtr')
+                                <div class="mb-4 row">
+                                    <label for="var_nik" class="col-sm-3 col-form-label">NIK</label>
+                                    <div class="col-sm-9">
+                                        <input type="text" name="var_nik" id="var_nik"
+                                            class="form-control  @error('var_nik') is-invalid @enderror"
+                                            value="{{ old('var_nik') }}" maxlength="16" required>
+                                        @errorFeedback('var_nik')
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
 
                             <div class="mb-4 row">
                                 <label for="var_nama" class="col-sm-3 col-form-label">Nama</label>
@@ -251,56 +308,56 @@
                                     @errorFeedback('text_alamat')
                                 </div>
                             </div>
+                            @if ($type == 'sitr/rdtr')
+                                <div class="location-group">
+                                    <div class="mb-4 row">
+                                        <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_provinsi" id="var_provinsi"
+                                                class="form-select  select2 provinsi @error('var_provinsi') is-invalid @enderror">
+                                                <option value="">-- Pilih Provinsi --</option>
+                                            </select>
+                                            @errorFeedback('var_provinsi')
+                                        </div>
+                                    </div>
 
-                            <div class="location-group">
-                                <div class="mb-4 row">
-                                    <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_provinsi" id="var_provinsi"
-                                            class="form-select  select2 provinsi @error('var_provinsi') is-invalid @enderror">
-                                            <option value="">-- Pilih Provinsi --</option>
-                                        </select>
-                                        @errorFeedback('var_provinsi')
+                                    <div class="mb-4 row">
+                                        <label for="var_kabupaten" class="col-sm-3 col-form-label">Kabupaten</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_kabupaten" id="var_kabupaten"
+                                                class="form-select select2 kabupaten @error('var_kabupaten') is-invalid @enderror"
+                                                disabled>
+                                                <option value="">-- Pilih Kabupaten --</option>
+                                            </select>
+                                            @errorFeedback('var_kabupaten')
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4 row">
+                                        <label for="var_kecamatan" class="col-sm-3 col-form-label">Kecamatan</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_kecamatan" id="var_kecamatan"
+                                                class="form-select select2 kecamatan @error('var_kecamatan') is-invalid @enderror"
+                                                disabled>
+                                                <option value="">-- Pilih Kecamatan --</option>
+                                            </select>
+                                            @errorFeedback('var_kecamatan')
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4 row">
+                                        <label for="var_kelurahan" class="col-sm-3 col-form-label">Kelurahan</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_kelurahan" id="var_kelurahan"
+                                                class="form-select select2 kelurahan @error('var_kelurahan') is-invalid @enderror"
+                                                disabled>
+                                                <option value="">-- Pilih Kelurahan --</option>
+                                            </select>
+                                            @errorFeedback('var_kelurahan')
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div class="mb-4 row">
-                                    <label for="var_kabupaten" class="col-sm-3 col-form-label">Kabupaten</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_kabupaten" id="var_kabupaten"
-                                            class="form-select select2 kabupaten @error('var_kabupaten') is-invalid @enderror"
-                                            disabled>
-                                            <option value="">-- Pilih Kabupaten --</option>
-                                        </select>
-                                        @errorFeedback('var_kabupaten')
-                                    </div>
-                                </div>
-
-                                <div class="mb-4 row">
-                                    <label for="var_kecamatan" class="col-sm-3 col-form-label">Kecamatan</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_kecamatan" id="var_kecamatan"
-                                            class="form-select select2 kecamatan @error('var_kecamatan') is-invalid @enderror"
-                                            disabled>
-                                            <option value="">-- Pilih Kecamatan --</option>
-                                        </select>
-                                        @errorFeedback('var_kecamatan')
-                                    </div>
-                                </div>
-
-                                <div class="mb-4 row">
-                                    <label for="var_kelurahan" class="col-sm-3 col-form-label">Kelurahan</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_kelurahan" id="var_kelurahan"
-                                            class="form-select select2 kelurahan @error('var_kelurahan') is-invalid @enderror"
-                                            disabled>
-                                            <option value="">-- Pilih Kelurahan --</option>
-                                        </select>
-                                        @errorFeedback('var_kelurahan')
-                                    </div>
-                                </div>
-                            </div>
-
+                            @endif
 
                             <div class="mb-4 row">
                                 <label for="var_email" class="col-sm-3 col-form-label">Email</label>
@@ -321,17 +378,17 @@
                                     @errorFeedback('var_no_telp')
                                 </div>
                             </div>
-
-                            <div class="mb-4 row">
-                                <label for="var_no_ponsel" class="col-sm-3 col-form-label">No. Ponsel</label>
-                                <div class="col-sm-9">
-                                    <input type="text" name="var_no_ponsel" id="var_no_ponsel"
-                                        class="form-control  @error('var_no_ponsel') is-invalid @enderror phone-mask"
-                                        value="{{ old('var_no_ponsel') }}" required>
-                                    @errorFeedback('var_no_ponsel')
+                            @if ($type == 'sitr/rdtr')
+                                <div class="mb-4 row">
+                                    <label for="var_no_ponsel" class="col-sm-3 col-form-label">No. Ponsel</label>
+                                    <div class="col-sm-9">
+                                        <input type="text" name="var_no_ponsel" id="var_no_ponsel"
+                                            class="form-control  @error('var_no_ponsel') is-invalid @enderror phone-mask"
+                                            value="{{ old('var_no_ponsel') }}" required>
+                                        @errorFeedback('var_no_ponsel')
+                                    </div>
                                 </div>
-                            </div>
-
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -350,35 +407,37 @@
                                     @errorFeedback('var_nama_usaha')
                                 </div>
                             </div>
-
-                            <div class="mb-4 row">
-                                <label for="var_bentuk_usaha" class="col-sm-3 col-form-label">Bentuk Usaha</label>
-                                <div class="col-sm-9">
-                                    <select name="var_bentuk_usaha" id="var_bentuk_usaha"
-                                        class="form-select select2 @error('var_bentuk_usaha') is-invalid @enderror"
-                                        required>
-                                        <option value="">-- Pilih Bentuk Usaha --</option>
-                                        <option value="Perorangan"
-                                            {{ old('var_bentuk_usaha') == 'Perorangan' ? 'selected' : '' }}>Perorangan
-                                        </option>
-                                        <option value="CV/UD" {{ old('var_bentuk_usaha') == 'CV/UD' ? 'selected' : '' }}>
-                                            CV/UD</option>
-                                        <option value="PT" {{ old('var_bentuk_usaha') == 'PT' ? 'selected' : '' }}>PT
-                                        </option>
-                                        <option value="BUMDES/BUMDESMa"
-                                            {{ old('var_bentuk_usaha') == 'BUMDES/BUMDESMa' ? 'selected' : '' }}>
-                                            BUMDES/BUMDESMa</option>
-                                        <option value="Yayasan"
-                                            {{ old('var_bentuk_usaha') == 'Yayasan' ? 'selected' : '' }}>
-                                            Yayasan</option>
-                                        <option value="Lainnya/Instansi"
-                                            {{ old('var_bentuk_usaha') == 'Lainnya/Instansi' ? 'selected' : '' }}>
-                                            Lainnya/Instansi</option>
-                                    </select>
-                                    @errorFeedback('var_bentuk_usaha')
+                            @if ($type == 'sitr/rdtr')
+                                <div class="mb-4 row">
+                                    <label for="var_bentuk_usaha" class="col-sm-3 col-form-label">Bentuk Usaha</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_bentuk_usaha" id="var_bentuk_usaha"
+                                            class="form-select select2 @error('var_bentuk_usaha') is-invalid @enderror"
+                                            required>
+                                            <option value="">-- Pilih Bentuk Usaha --</option>
+                                            <option value="Perorangan"
+                                                {{ old('var_bentuk_usaha') == 'Perorangan' ? 'selected' : '' }}>Perorangan
+                                            </option>
+                                            <option value="CV/UD"
+                                                {{ old('var_bentuk_usaha') == 'CV/UD' ? 'selected' : '' }}>
+                                                CV/UD</option>
+                                            <option value="PT"
+                                                {{ old('var_bentuk_usaha') == 'PT' ? 'selected' : '' }}>PT
+                                            </option>
+                                            <option value="BUMDES/BUMDESMa"
+                                                {{ old('var_bentuk_usaha') == 'BUMDES/BUMDESMa' ? 'selected' : '' }}>
+                                                BUMDES/BUMDESMa</option>
+                                            <option value="Yayasan"
+                                                {{ old('var_bentuk_usaha') == 'Yayasan' ? 'selected' : '' }}>
+                                                Yayasan</option>
+                                            <option value="Lainnya/Instansi"
+                                                {{ old('var_bentuk_usaha') == 'Lainnya/Instansi' ? 'selected' : '' }}>
+                                                Lainnya/Instansi</option>
+                                        </select>
+                                        @errorFeedback('var_bentuk_usaha')
+                                    </div>
                                 </div>
-                            </div>
-
+                            @endif
                             <div class="mb-4 row">
                                 <label for="text_alamat_usaha" class="col-sm-3 col-form-label">Alamat Usaha</label>
                                 <div class="col-sm-9">
@@ -387,84 +446,99 @@
                                     @errorFeedback('text_alamat_usaha')
                                 </div>
                             </div>
-
-                            <div class="location-group">
-                                <div class="mb-4 row d-none">
-                                    <label for="var_provinsi_usaha" class="col-sm-3 col-form-label">Provinsi</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_provinsi_usaha" id="var_provinsi_usaha"
-                                            class="form-select select2 provinsi @error('var_provinsi_usaha') is-invalid @enderror">
-                                            <option value="">-- Pilih Provinsi --</option>
-                                        </select>
-                                        @errorFeedback('var_provinsi_usaha')
+                            @if ($type == 'sitr/rdtr')
+                                <div class="location-group">
+                                    <div class="mb-4 row d-none">
+                                        <label for="var_provinsi_usaha" class="col-sm-3 col-form-label">Provinsi</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_provinsi_usaha" id="var_provinsi_usaha"
+                                                class="form-select select2 provinsi @error('var_provinsi_usaha') is-invalid @enderror">
+                                                <option value="">-- Pilih Provinsi --</option>
+                                            </select>
+                                            @errorFeedback('var_provinsi_usaha')
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div class="mb-4 row d-none">
-                                    <label for="var_kabupaten_usaha" class="col-sm-3 col-form-label">Kabupaten</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_kabupaten_usaha" id="var_kabupaten_usaha"
-                                            class="form-select select2 kabupaten @error('var_kabupaten_usaha') is-invalid @enderror"
-                                            disabled>
-                                            <option value="">-- Pilih Kabupaten --</option>
-                                        </select>
-                                        @errorFeedback('var_kabupaten_usaha')
+                                    <div class="mb-4 row d-none">
+                                        <label for="var_kabupaten_usaha" class="col-sm-3 col-form-label">Kabupaten</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_kabupaten_usaha" id="var_kabupaten_usaha"
+                                                class="form-select select2 kabupaten @error('var_kabupaten_usaha') is-invalid @enderror"
+                                                disabled>
+                                                <option value="">-- Pilih Kabupaten --</option>
+                                            </select>
+                                            @errorFeedback('var_kabupaten_usaha')
+                                        </div>
+                                    </div>
+                                    <div class="mb-4 row">
+                                        <label for="var_kecamatan_usaha" class="col-sm-3 col-form-label">Kecamatan</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_kecamatan_usaha" id="var_kecamatan_usaha"
+                                                class="form-select select2 kecamatan @error('var_kecamatan_usaha') is-invalid @enderror"
+                                                disabled>
+                                                <option value="">-- Pilih Kecamatan --</option>
+                                            </select>
+                                            @errorFeedback('var_kecamatan_usaha')
+                                        </div>
+                                    </div>
+                                    <div class="mb-4 row">
+                                        <label for="var_kelurahan_usaha" class="col-sm-3 col-form-label">Kelurahan</label>
+                                        <div class="col-sm-9">
+                                            <select name="var_kelurahan_usaha" id="var_kelurahan_usaha"
+                                                class="form-select select2 kelurahan @error('var_kelurahan_usaha') is-invalid @enderror"
+                                                disabled>
+                                                <option value="">-- Pilih Kelurahan --</option>
+                                            </select>
+                                            @errorFeedback('var_kelurahan_usaha')
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="mb-4 row">
-                                    <label for="var_kecamatan_usaha" class="col-sm-3 col-form-label">Kecamatan</label>
+                                    <label for="var_rencana_usaha" class="col-sm-3 col-form-label">Rencana Usaha</label>
                                     <div class="col-sm-9">
-                                        <select name="var_kecamatan_usaha" id="var_kecamatan_usaha"
-                                            class="form-select select2 kecamatan @error('var_kecamatan_usaha') is-invalid @enderror"
-                                            disabled>
-                                            <option value="">-- Pilih Kecamatan --</option>
-                                        </select>
-                                        @errorFeedback('var_kecamatan_usaha')
+                                        <textarea name="var_rencana_usaha" id="var_rencana_usaha"
+                                            class="form-control  @error('var_rencana_usaha') is-invalid @enderror" required>{{ old('var_rencana_usaha') }}</textarea>
+                                        @errorFeedback('var_rencana_usaha')
                                     </div>
                                 </div>
+
                                 <div class="mb-4 row">
-                                    <label for="var_kelurahan_usaha" class="col-sm-3 col-form-label">Kelurahan</label>
+                                    <label for="dec_rencana_luas_lantai" class="col-sm-3 col-form-label">Rencana Luas
+                                        Lantai</label>
                                     <div class="col-sm-9">
-                                        <select name="var_kelurahan_usaha" id="var_kelurahan_usaha"
-                                            class="form-select select2 kelurahan @error('var_kelurahan_usaha') is-invalid @enderror"
-                                            disabled>
-                                            <option value="">-- Pilih Kelurahan --</option>
-                                        </select>
-                                        @errorFeedback('var_kelurahan_usaha')
+                                        <input type="number" name="dec_rencana_luas_lantai" id="dec_rencana_luas_lantai"
+                                            class="form-control  @error('dec_rencana_luas_lantai') is-invalid @enderror"
+                                            value="{{ old('dec_rencana_luas_lantai') }}" required>
+                                        @errorFeedback('dec_rencana_luas_lantai')
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="mb-4 row">
-                                <label for="var_rencana_usaha" class="col-sm-3 col-form-label">Rencana Usaha</label>
-                                <div class="col-sm-9">
-                                    <textarea name="var_rencana_usaha" id="var_rencana_usaha"
-                                        class="form-control  @error('var_rencana_usaha') is-invalid @enderror" required>{{ old('var_rencana_usaha') }}</textarea>
-                                    @errorFeedback('var_rencana_usaha')
-                                </div>
-                            </div>
-
-                            <div class="mb-4 row">
-                                <label for="dec_rencana_luas_lantai" class="col-sm-3 col-form-label">Rencana Luas
-                                    Lantai</label>
-                                <div class="col-sm-9">
-                                    <input type="number" name="dec_rencana_luas_lantai" id="dec_rencana_luas_lantai"
-                                        class="form-control  @error('dec_rencana_luas_lantai') is-invalid @enderror"
-                                        value="{{ old('dec_rencana_luas_lantai') }}" required>
-                                    @errorFeedback('dec_rencana_luas_lantai')
-                                </div>
-                            </div>
-
+                            @endif
                         </div>
                     </div>
                 </div>
 
+                @if ($type == 'sitr/rdtr')
+                    <div class="col-12 mt-4">
+                        <div class="card">
+                            <h5 class="card-header border-bottom mb-3">Peta Lokasi</h5>
+                            <div class="card-body">
+                                <div id="map" style="height: 500px; width: 100%; border-radius: 8px;"></div>
+                                <div class="mt-3">
+                                    <label for="kml_file" class="form-label">Atau Unggah Berkas KML</label>
+                                    <input class="form-control @error('kml_file') is-invalid @enderror" type="file"
+                                        id="kml_file" name="kml_file"
+                                        accept=".kml,application/vnd.google-earth.kml+xml">
+                                    @errorFeedback('kml_file')
+                                </div>
 
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 <div class="col-12 mt-4">
                     <div class="card">
-                        <h5 class="card-header border-bottom mb-3">Peta Lokasi Usulan</h5>
+                        <h5 class="card-header border-bottom mb-3">Administrasi</h5>
                         <div class="card-body">
-                            <div id="map" style="height: 500px; width: 100%; border-radius: 8px;"></div>
                             <input type="hidden" name="json_geometry" id="json_geometry">
                             <div class="my-4 row">
                                 <label for="nomor_permohonan" class="col-sm-3 col-form-label">Nomor Permohonan</label>
@@ -478,7 +552,8 @@
                                         <span
                                             class="input-group-text">{{ $keyStorages->where('var_key', 'postFixNomorPermohonan')->first()->var_value }}</span>
                                     </div>
-                                    <small class="form-text text-muted">Jangan ubah kolom ini jika ingin otomatis mengikuti
+                                    <small class="form-text text-muted">Jangan ubah kolom ini jika ingin otomatis
+                                        mengikuti
                                         urutan nomor
                                         surat</small>
                                     @errorFeedback('var_nomor_permohonan')
@@ -497,7 +572,8 @@
                             </div>
 
                             <div class="mb-4 row">
-                                <label for="var_nomor_pengesahan" class="col-sm-3 col-form-label">Nomor Pengesahan</label>
+                                <label for="var_nomor_pengesahan" class="col-sm-3 col-form-label">Nomor
+                                    Pengesahan</label>
                                 <div class="col-sm-9">
                                     <div class="input-group">
                                         <span
@@ -508,7 +584,8 @@
                                         <span
                                             class="input-group-text">{{ $keyStorages->where('var_key', 'postFixNomorSurat')->first()->var_value }}</span>
                                     </div>
-                                    <small class="form-text text-muted">Jangan ubah kolom ini jika ingin otomatis mengikuti
+                                    <small class="form-text text-muted">Jangan ubah kolom ini jika ingin otomatis
+                                        mengikuti
                                         urutan nomor
                                         surat</small>
                                     @errorFeedback('var_nomor_pengesahan')
@@ -526,11 +603,12 @@
                             </div>
 
                             <div class="mb-4 row">
-                                <label for="pilihan_redaksi_ids" class="col-sm-3 col-form-label">Pilihan Redaksi</label>
+                                <label for="pilihan_redaksi_ids" class="col-sm-3 col-form-label">Pilihan
+                                    Redaksi</label>
                                 <div class="col-sm-9">
                                     <select name="pilihan_redaksi_ids[]" id="pilihan_redaksi_ids"
                                         class="form-select select2 @error('pilihan_redaksi_ids') is-invalid @enderror"
-                                        multiple>
+                                        multiple required>
                                         @foreach ($templateDocs as $templateDoc)
                                             <option value="{{ $templateDoc->id }}"
                                                 {{ is_array(old('pilihan_redaksi_ids')) && in_array($templateDoc->id, old('pilihan_redaksi_ids')) ? 'selected' : '' }}>
@@ -541,14 +619,15 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card-footer">
-                            <button type="submit" class="btn btn-success">Simpan</button>
-                            <a href="{{ route('permohonan.index') }}" class="btn btn-secondary">Batal</a>
-                        </div>
                     </div>
                 </div>
 
+                <div class="col-12 mt-4">
+                    <button type="submit" class="btn btn-success">Simpan</button>
+                    <a href="{{ route('permohonan.index') }}?type={{ $type }}"
+                        class="btn btn-secondary">Batal</a>
 
+                </div>
             </div>
         </form>
     </div>
