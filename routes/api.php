@@ -1,21 +1,23 @@
 <?php
 
-use App\Http\Controllers\Api\V1\PermohonanController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\KkprController;
+use App\Http\Controllers\Api\V1\SitrRdtrController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
 
 Route::group(['prefix' => 'v1'], function () {
 
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:20,1'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        Route::get('/user', function (Request $request) {
-            return $request->user();
-        });
-        Route::apiResource('permohonan', PermohonanController::class);
+        Route::apiResource('/permohonan/sitr-rdtr', SitrRdtrController::class)->parameters([
+            'sitr-rdtr' => 'permohonan' // Alias parameter agar Route Model Binding tetap bekerja
+        ]);
+        Route::apiResource('/permohonan/kkpr', KkprController::class)->parameters([
+            'kkpr' => 'permohonan' // Alias parameter agar Route Model Binding tetap bekerja
+        ]);
     });
 });

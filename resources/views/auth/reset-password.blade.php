@@ -24,7 +24,7 @@
                         @include('components.alert')
                         <form id="formAuthentication" class="mb-6" action="{{ route('password.update')}}" method="POST">
                             @csrf
-                            <input type="hidden" name="token" value="{{ $token }}">
+                            <input type="hidden" name="token" value="{{ request()->route('token') }}">
                             <div class="mb-6">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email" name="email"
