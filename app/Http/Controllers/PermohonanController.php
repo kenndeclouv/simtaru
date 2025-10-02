@@ -4,17 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PermohonanRequest;
+use App\Models\District;
 use App\Models\KeyStorage;
 use App\Models\Permohonan;
 use App\Models\PermohonanTemplateDoc;
+use App\Models\Province;
+use App\Models\Regency;
 use App\Models\TemplateDocs;
+use App\Models\Village;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\TemplateProcessor;
-use Exception;
 use Yajra\DataTables\Facades\DataTables;
+use Exception;
 use geoPHP;
 
 class PermohonanController extends Controller
@@ -40,15 +45,8 @@ class PermohonanController extends Controller
                         return '-';
                     }
 
-                    $kabupatenId = $row->var_kabupaten;
-
-                    $provinsiId = substr($kabupatenId, 0, 2);
-
-                    $semuaKabupaten = getKabupaten($provinsiId);
-
-                    $namaKabupaten = collect($semuaKabupaten)->firstWhere('id', $kabupatenId)['nama'] ?? '(Tidak Ditemukan)';
-
-                    return $namaKabupaten;
+                    $regency = Regency::find($row->var_kabupaten);
+                    return $regency ? $regency->name : '(Tidak Ditemukan)';
                 })
                 // ->addColumn('status', function ($row) {
                 //     return $row->var_nomor_pengesahan
@@ -65,21 +63,23 @@ class PermohonanController extends Controller
     {
         $type = $request->type ?? 'sitr/rdtr';
         $keyStorages = KeyStorage::all();
+        $user = Auth::user();
+        $apiToken = $user->createToken('form-upload-token')->plainTextToken;
         if ($type == 'sitr/rdtr') {
             $templateDocs = TemplateDocs::where('enum_jenis', 'sitr')->orWhere('enum_jenis', 'rdtr')->get();
         } else {
             $templateDocs = TemplateDocs::where('enum_jenis', $type)->get();
         }
-        return view('permohonan.create', compact('templateDocs', 'keyStorages', 'type'));
+        return view('permohonan.create', compact('templateDocs', 'keyStorages', 'type', 'apiToken'));
     }
 
     public function store(PermohonanRequest $request)
     {
         $validated = $request->validated();
 
-
+        // Generate nomor permohonan & pengesahan
         $tahun = now()->year;
-        $last = Permohonan::latest()->first()->id ?? 0 + 1;
+        $last = (Permohonan::latest()->first()->id ?? 0) + 1;
         $preFixNomorPermohonan = KeyStorage::where('var_key', 'preFixNomorPermohonan')->first()->var_value;
         $postFixNomorPermohonan = KeyStorage::where('var_key', 'postFixNomorPermohonan')->first()->var_value;
         $preFixNomorSurat = KeyStorage::where('var_key', 'preFixNomorSurat')->first()->var_value;
@@ -89,15 +89,51 @@ class PermohonanController extends Controller
         $validated['var_nomor_pengesahan'] = "{$preFixNomorSurat}{$last}{$postFixNomorSurat}{$tahun}";
         $validated['var_type'] = $validated['var_type'] ?? 'sitr/rdtr';
 
+        // Buat permohonan DULUAN, tanpa data attachment
         $permohonan = Permohonan::create($validated);
 
-        $pilihan_redaksi_ids = $validated['pilihan_redaksi_ids'];
-        foreach ($pilihan_redaksi_ids as $template_doc_id) {
-            $template_doc = TemplateDocs::find($template_doc_id);
-            PermohonanTemplateDoc::create([
-                'fk_permohonan_id' => $permohonan->id,
-                'fk_template_docs_id' => $template_doc->id
-            ]);
+        // Proses attachment
+        $attachmentFields = [
+            'var_fotocopy_ktp_attachment',
+            'var_fotocopy_npwp_attachment',
+            'var_foto_lokasi_rencana_kegiatan_attachment',
+            'var_titik_koordinat_attachment',
+            'var_sitr_attachment',
+            'var_lp2b_attachment',
+            'var_bukti_penguasaan_tanah_attachment',
+            'var_rencana_teknis_bangunan_attachment',
+            'var_ptp_kkpr_nonberusaha_attachment',
+            'var_akta_pendirian_badan_attachment',
+        ];
+
+        $finalAttachmentPaths = [];
+
+        foreach ($attachmentFields as $field) {
+            $tempPath = $validated[$field] ?? null;  // e.g., "tmp/randomname.pdf"
+            if ($tempPath && Storage::disk('public')->exists($tempPath)) {
+                $fileName = basename($tempPath);
+                $permanentPath = "permohonan/{$permohonan->id}/{$field}/{$fileName}";
+                Storage::disk('public')->move($tempPath, $permanentPath);
+                $finalAttachmentPaths[$field] = $permanentPath;
+            }
+        }
+
+        // Update record permohonan dengan path attachment yang permanen
+        if (!empty($finalAttachmentPaths)) {
+            $permohonan->update($finalAttachmentPaths);
+        }
+
+        // Proses relasi template docs
+        if (isset($validated['pilihan_redaksi_ids'])) {
+            foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
+                $template_doc = TemplateDocs::find($template_doc_id);
+                if ($template_doc) {
+                    PermohonanTemplateDoc::create([
+                        'fk_permohonan_id' => $permohonan->id,
+                        'fk_template_docs_id' => $template_doc->id
+                    ]);
+                }
+            }
         }
 
         return redirect()->route('permohonan.index', ['type' => $validated['var_type']])->with('success', 'Permohonan berhasil disimpan.');
@@ -106,21 +142,57 @@ class PermohonanController extends Controller
     public function edit(Permohonan $permohonan, Request $request)
     {
         $type = $request->type ?? 'sitr/rdtr';
+        $keyStorages = KeyStorage::all();
+        $user = Auth::user();
+        $apiToken = $user->createToken('form-upload-token')->plainTextToken;
         if ($type == 'sitr/rdtr') {
             $templateDocs = TemplateDocs::where('enum_jenis', 'sitr')->orWhere('enum_jenis', 'rdtr')->get();
         } else {
             $templateDocs = TemplateDocs::where('enum_jenis', $type)->get();
         }
-        $keyStorages = KeyStorage::all();
-        return view('permohonan.edit', compact('permohonan', 'templateDocs', 'keyStorages', 'type'));
+        return view('permohonan.edit', compact('permohonan', 'templateDocs', 'keyStorages', 'type', 'apiToken'));
     }
 
     public function update(PermohonanRequest $request, Permohonan $permohonan)
     {
         $validated = $request->validated();
 
-        $permohonan->update($validated);
+        // Proses attachment
+        $attachmentFields = [
+            'var_fotocopy_ktp_attachment',
+            'var_fotocopy_npwp_attachment',
+            'var_foto_lokasi_rencana_kegiatan_attachment',
+            'var_titik_koordinat_attachment',
+            'var_sitr_attachment',
+            'var_lp2b_attachment',
+            'var_bukti_penguasaan_tanah_attachment',
+            'var_rencana_teknis_bangunan_attachment',
+            'var_ptp_kkpr_nonberusaha_attachment',
+            'var_akta_pendirian_badan_attachment',
+        ];
 
+        $finalAttachmentPaths = [];
+
+        foreach ($attachmentFields as $field) {
+            $tempPath = $validated[$field] ?? null;  // e.g., "tmp/randomname.pdf"
+            if ($tempPath && Storage::disk('public')->exists($tempPath)) {
+                // Delete old file if exists
+                if ($permohonan->$field && Storage::disk('public')->exists($permohonan->$field)) {
+                    Storage::disk('public')->delete($permohonan->$field);
+                }
+
+                $fileName = basename($tempPath);
+                $permanentPath = "permohonan/{$permohonan->id}/{$field}/{$fileName}";
+                Storage::disk('public')->move($tempPath, $permanentPath);
+                $finalAttachmentPaths[$field] = $permanentPath;
+            }
+        }
+
+        // Update record permohonan dengan data validated dan path attachment yang permanen
+        $updateData = array_merge($validated, $finalAttachmentPaths);
+        $permohonan->update($updateData);
+
+        // Proses relasi template docs
         if (isset($validated['pilihan_redaksi_ids'])) {
             $permohonan->templateDocs()->detach();
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
@@ -141,7 +213,6 @@ class PermohonanController extends Controller
     {
         $permohonan = Permohonan::findOrFail($id);
 
-
         return view('permohonan.show', [
             'permohonan' => $permohonan,
         ]);
@@ -155,7 +226,6 @@ class PermohonanController extends Controller
 
     public function status(Permohonan $permohonan, Request $request)
     {
-
         $lampiranName = null;
         if ($request->hasFile('lampiran')) {
             $lampiran = $request->file('lampiran');
@@ -184,7 +254,6 @@ class PermohonanController extends Controller
         $replacementData['var_kelurahan'] = $permohonan->nama_kelurahan;
         $replacementData['var_kecamatan_usaha'] = $permohonan->nama_kecamatan_usaha;
         $replacementData['var_kelurahan_usaha'] = $permohonan->nama_kelurahan_usaha;
-
 
         foreach ($templates as $template) {
             try {
@@ -218,7 +287,7 @@ class PermohonanController extends Controller
                     'var_generated_file_path' => $newFilePath
                 ]);
             } catch (Exception $e) {
-                Log::error("Gagal generate dokumen: " . $e->getMessage());
+                Log::error('Gagal generate dokumen: ' . $e->getMessage());
                 return redirect()->back()->with('error', 'Gagal generate: ' . $template->var_nama . ' - ' . $e->getMessage());
             }
         }
@@ -241,15 +310,15 @@ class PermohonanController extends Controller
 
             // 3. Buat struktur KML lengkap secara manual (pakai HEREDOC biar rapi)
             $fullKml = <<<KML
-<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Placemark>
-    <name>{$permohonan->var_nama_usaha}</name>
-    <description>Lokasi untuk permohonan {$permohonan->var_nomor_permohonan}</description>
-    {$geometryFragment}
-  </Placemark>
-</kml>
-KML;
+                <?xml version="1.0" encoding="UTF-8"?>
+                <kml xmlns="http://www.opengis.net/kml/2.2">
+                  <Placemark>
+                    <name>{$permohonan->var_nama_usaha}</name>
+                    <description>Lokasi untuk permohonan {$permohonan->var_nomor_permohonan}</description>
+                    {$geometryFragment}
+                  </Placemark>
+                </kml>
+                KML;
 
             // 4. Buat nama file
             $fileName = 'lokasi_' . preg_replace('/[^A-Za-z0-9\-]/', '', $permohonan->var_nama_usaha) . '.kml';

@@ -45,6 +45,20 @@ class PermohonanRequest extends FormRequest
             'var_url_lampiran' => 'string|max:255|nullable',
             'enum_status' => 'in:pending,approved,rejected',
             'pilihan_redaksi_ids' => 'array|nullable',
+
+            'var_npwp_pemohon_atau_badan_usaha' => 'string|max:255|nullable',
+            'var_jenis_kegiatan' => 'string|max:255|nullable',
+
+            'var_fotocopy_ktp_attachment' => 'string|max:255|nullable',
+            'var_fotocopy_npwp_attachment' => 'string|max:255|nullable',
+            'var_foto_lokasi_rencana_kegiatan_attachment' => 'string|max:255|nullable',
+            'var_titik_koordinat_attachment' => 'string|max:255|nullable',
+            'var_sitr_attachment' => 'string|max:255|nullable',
+            'var_lp2b_attachment' => 'string|max:255|nullable',
+            'var_bukti_penguasaan_tanah_attachment' => 'string|max:255|nullable',
+            'var_rencana_teknis_bangunan_attachment' => 'string|max:255|nullable',
+            'var_ptp_kkpr_nonberusaha_attachment' => 'string|max:255|nullable',
+            'var_akta_pendirian_badan_attachment' => 'string|max:255|nullable',
         ];
     }
 
@@ -98,6 +112,33 @@ class PermohonanRequest extends FormRequest
             'enum_status.in' => 'Pilihan enum_status tidak valid.',
             'pilihan_redaksi_ids.array' => 'pilihan_redaksi_ids harus berupa array.',
             'pilihan_redaksi_ids.nullable' => 'pilihan_redaksi_ids boleh diisi.',
+
+            // Pesan validasi untuk kolom baru
+            'var_npwp_pemohon_atau_badan_usaha.string' => 'NPWP Pemohon/Badan Usaha harus berupa string.',
+            'var_npwp_pemohon_atau_badan_usaha.max' => 'NPWP Pemohon/Badan Usaha tidak boleh lebih dari 255 karakter.',
+            'var_jenis_kegiatan.string' => 'Jenis Kegiatan harus berupa string.',
+            'var_jenis_kegiatan.max' => 'Jenis Kegiatan tidak boleh lebih dari 255 karakter.',
+
+            'var_fotocopy_ktp_attachment.string' => 'Lampiran Fotocopy KTP harus berupa string.',
+            'var_fotocopy_ktp_attachment.max' => 'Lampiran Fotocopy KTP tidak boleh lebih dari 255 karakter.',
+            'var_fotocopy_npwp_attachment.string' => 'Lampiran Fotocopy NPWP harus berupa string.',
+            'var_fotocopy_npwp_attachment.max' => 'Lampiran Fotocopy NPWP tidak boleh lebih dari 255 karakter.',
+            'var_foto_lokasi_rencana_kegiatan_attachment.string' => 'Lampiran Foto Lokasi Rencana Kegiatan harus berupa string.',
+            'var_foto_lokasi_rencana_kegiatan_attachment.max' => 'Lampiran Foto Lokasi Rencana Kegiatan tidak boleh lebih dari 255 karakter.',
+            'var_titik_koordinat_attachment.string' => 'Lampiran Titik Koordinat harus berupa string.',
+            'var_titik_koordinat_attachment.max' => 'Lampiran Titik Koordinat tidak boleh lebih dari 255 karakter.',
+            'var_sitr_attachment.string' => 'Lampiran SITR harus berupa string.',
+            'var_sitr_attachment.max' => 'Lampiran SITR tidak boleh lebih dari 255 karakter.',
+            'var_lp2b_attachment.string' => 'Lampiran LP2B harus berupa string.',
+            'var_lp2b_attachment.max' => 'Lampiran LP2B tidak boleh lebih dari 255 karakter.',
+            'var_bukti_penguasaan_tanah_attachment.string' => 'Lampiran Bukti Penguasaan Tanah harus berupa string.',
+            'var_bukti_penguasaan_tanah_attachment.max' => 'Lampiran Bukti Penguasaan Tanah tidak boleh lebih dari 255 karakter.',
+            'var_rencana_teknis_bangunan_attachment.string' => 'Lampiran Rencana Teknis Bangunan harus berupa string.',
+            'var_rencana_teknis_bangunan_attachment.max' => 'Lampiran Rencana Teknis Bangunan tidak boleh lebih dari 255 karakter.',
+            'var_ptp_kkpr_nonberusaha_attachment.string' => 'Lampiran PTP KKPR Nonberusaha harus berupa string.',
+            'var_ptp_kkpr_nonberusaha_attachment.max' => 'Lampiran PTP KKPR Nonberusaha tidak boleh lebih dari 255 karakter.',
+            'var_akta_pendirian_badan_attachment.string' => 'Lampiran Akta Pendirian Badan harus berupa string.',
+            'var_akta_pendirian_badan_attachment.max' => 'Lampiran Akta Pendirian Badan tidak boleh lebih dari 255 karakter.',
         ];
     }
 }

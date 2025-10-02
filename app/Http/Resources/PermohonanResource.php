@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Request;
 
 class PermohonanResource extends JsonResource
 {
@@ -11,19 +11,16 @@ class PermohonanResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'tipe_permohonan' => $this->var_type, // Tambahkan ini agar jelas
+            'tipe_permohonan' => $this->var_type,  // Tambahkan ini agar jelas
             'status' => $this->enum_status,
-
             // --- DATA UTAMA ---
             'nomor_permohonan' => $this->var_nomor_permohonan,
             'tanggal_permohonan' => $this->date_tanggal_permohonan,
-            
             // Tampilkan hanya jika tidak null
             'nomor_pengesahan' => $this->whenNotNull($this->var_nomor_pengesahan),
             'tanggal_pengesahan' => $this->whenNotNull($this->date_tanggal_pengesahan),
             'catatan' => $this->whenNotNull($this->text_catatan),
             'lampiran_url' => $this->whenNotNull($this->var_url_lampiran),
-
             // --- DATA PEMOHON ---
             'pemohon' => [
                 'nama' => $this->var_nama,
@@ -32,19 +29,19 @@ class PermohonanResource extends JsonResource
                 'no_telp' => $this->whenNotNull($this->var_no_telp),
                 'no_ponsel' => $this->whenNotNull($this->var_no_ponsel),
                 // Tampilkan NIK hanya jika ada
-                'nik' => $this->whenNotNull($this->var_nik), 
+                'nik' => $this->whenNotNull($this->var_nik),
             ],
-
             // --- DATA USAHA ---
             'usaha' => [
                 'nama_usaha' => $this->var_nama_usaha,
                 'alamat_usaha' => $this->text_alamat_usaha,
-                // Tampilkan hanya jika ada
                 'bentuk_usaha' => $this->whenNotNull($this->var_bentuk_usaha),
                 'rencana_usaha' => $this->whenNotNull($this->var_rencana_usaha),
                 'rencana_luas_lantai' => $this->whenNotNull($this->dec_rencana_luas_lantai),
+                // kkpr
+                'var_npwp_pemohon_atau_badan_usaha' => $this->whenNotNull($this->var_npwp_pemohon_atau_badan_usaha),
+                'var_jenis_kegiatan' => $this->whenNotNull($this->var_jenis_kegiatan),
             ],
-            
             // GABUNGKAN DATA LOKASI & GEOMETRI HANYA JIKA TIPE-NYA sitr/rdtr
             $this->mergeWhen($this->var_type === 'sitr/rdtr', [
                 'lokasi_pemohon' => [
@@ -59,9 +56,19 @@ class PermohonanResource extends JsonResource
                 ],
                 'geometri' => $this->whenNotNull(json_decode($this->json_geometry)),
             ]),
-
             'template_dokumen' => TemplateDocResource::collection($this->whenLoaded('templateDocs')),
-            
+            'attachment' => [
+                'fotocopy_ktp' => $this->whenNotNull($this->var_fotocopy_ktp_attachment),
+                'fotocopy_npwp' => $this->whenNotNull($this->var_fotocopy_npwp_attachment),
+                'foto_lokasi_rencana_kegiatan' => $this->whenNotNull($this->var_foto_lokasi_rencana_kegiatan_attachment),
+                'titik_koordinat' => $this->whenNotNull($this->var_titik_koordinat_attachment),
+                'sitr' => $this->whenNotNull($this->var_sitr_attachment),
+                'lp2b' => $this->whenNotNull($this->var_lp2b_attachment),
+                'bukti_penguasaan_tanah' => $this->whenNotNull($this->var_bukti_penguasaan_tanah_attachment),
+                'rencana_teknis_bangunan' => $this->whenNotNull($this->var_rencana_teknis_bangunan_attachment),
+                'ptp_kkpr_nonberusaha' => $this->whenNotNull($this->var_ptp_kkpr_nonberusaha_attachment),
+                'akta_pendirian_badan' => $this->whenNotNull($this->var_akta_pendirian_badan_attachment),
+            ],
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];

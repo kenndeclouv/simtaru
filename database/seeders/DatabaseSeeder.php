@@ -18,7 +18,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            PermissionSeeder::class
+            PermissionSeeder::class,
+            LocationSeeder::class
         ]);
 
         $superadmin = User::create([

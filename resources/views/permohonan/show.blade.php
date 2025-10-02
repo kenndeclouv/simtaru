@@ -230,7 +230,105 @@
                         </dl>
                     </div>
                 </div>
-
+                @if ($permohonan->var_type == 'kkpr')
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5 class="fw-bold mt-4"># Lampiran Permohonan KKPR</h5>
+                            <dl class="row mb-0">
+                                @if ($permohonan->var_fotocopy_ktp_attachment)
+                                    <dt class="col-sm-5">Fotocopy KTP</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_fotocopy_ktp_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_fotocopy_npwp_attachment)
+                                    <dt class="col-sm-5">Fotocopy NPWP</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_fotocopy_npwp_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_foto_lokasi_rencana_kegiatan_attachment)
+                                    <dt class="col-sm-5">Foto Lokasi Rencana Kegiatan</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_foto_lokasi_rencana_kegiatan_attachment }}"
+                                            target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_titik_koordinat_attachment)
+                                    <dt class="col-sm-5">Titik Koordinat</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_titik_koordinat_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_sitr_attachment)
+                                    <dt class="col-sm-5">SITR</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_sitr_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_lp2b_attachment)
+                                    <dt class="col-sm-5">LP2B</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_lp2b_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_bukti_penguasaan_tanah_attachment)
+                                    <dt class="col-sm-5">Bukti Penguasaan Tanah</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_bukti_penguasaan_tanah_attachment }}"
+                                            target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_rencana_teknis_bangunan_attachment)
+                                    <dt class="col-sm-5">Rencana Teknis Bangunan</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_rencana_teknis_bangunan_attachment }}"
+                                            target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_ptp_kkpr_nonberusaha_attachment)
+                                    <dt class="col-sm-5">PTP KKPR Nonberusaha</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_ptp_kkpr_nonberusaha_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                                @if ($permohonan->var_akta_pendirian_badan_attachment)
+                                    <dt class="col-sm-5">Akta Pendirian Badan</dt>
+                                    <dd class="col-sm-7">
+                                        <a href="{{ $permohonan->var_akta_pendirian_badan_attachment }}" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-eye me-1"></i> Lihat
+                                        </a>
+                                    </dd>
+                                @endif
+                            </dl>
+                        </div>
+                    </div>
+                @endif
                 <div class="row mb-4">
                     <div class="col-md-12">
                         <div class="d-flex justify-content-between align-items-center">
@@ -238,7 +336,7 @@
                             <form action="{{ route('permohonan.generateDocuments', $permohonan->id) }}" method="POST">
                                 @csrf
                                 @if ($permohonan->templateDocs->count() > 0)
-                                <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary">
                                         <i class="bx bx-file me-1"></i> Generate Dokumen
                                     </button>
                                 @endif
@@ -271,7 +369,7 @@
                                                     <div class="d-flex">
                                                         <a href="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}"
                                                             target="_blank" class="btn btn-sm btn-outline-primary me-2">
-                                                            <i class="bx bx-download me-1"></i> Download
+                                                            <i class="fa-solid fa-eye me-1"></i> Lihat
                                                         </a>
                                                         <button type="button"
                                                             class="btn btn-sm btn-outline-secondary preview-btn"

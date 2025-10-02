@@ -2,273 +2,368 @@
 
 @section('title', 'Tambahkan Permohonan SITR')
 
+@section('page-header')
+    <meta name="api-token" content="{{ $apiToken }}">
+@endsection
+
 @section('page-script')
     <script>
         $(document).ready(function() {
             $('.select2').select2();
+
+            // 1. Siapkan "bendera" penanda. Awalnya 'false' (bersih).
+            let isFormDirty = false;
+            const formId = '#permohonanForm';
+
+            // 2. Jika ada input, select, atau textarea di dalam form yang berubah,
+            //    langsung ubah benderanya jadi 'true' (kotor).
+            //    Selector ':input' akan menargetkan semua jenis input form.
+            $(formId).find(':input').on('change', function() {
+                isFormDirty = true;
+            });
+
+            // 3. Saat form di-submit, kita nonaktifkan pengecekan.
+            //    Ini PENTING biar notifnya nggak muncul pas submit.
+            $(formId).on('submit', function() {
+                $(window).off('beforeunload');
+            });
+
+            // 4. Sekarang, event 'beforeunload' hanya akan jalan
+            //    jika benderanya 'true' (form sudah pernah diubah).
+            $(window).on('beforeunload', function(e) {
+                if (isFormDirty) {
+                    // Baris ini diperlukan untuk menampilkan prompt konfirmasi di browser modern
+                    e.preventDefault();
+                    e.returnValue = ''; // Beberapa browser lama butuh ini
+                    return ''; // Beberapa browser lain butuh ini
+                }
+            });
         });
     </script>
-    @if ($type == 'sitr/rdtr')
-        <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
-        <script>
-            const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
-            const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
+    {{-- @if ($type == 'sitr/rdtr') --}}
+    <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
+    <script>
+        const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
+        const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
 
-            function reloadSelect2($select, options, placeholder = '') {
-                $select.html(options);
-                $select.select2({
-                    width: '100%',
-                    placeholder: placeholder,
-                    dropdownParent: $select.parent()
+        function reloadSelect2($select, options, placeholder = '') {
+            $select.html(options);
+            $select.select2({
+                width: '100%',
+                placeholder: placeholder,
+                dropdownParent: $select.parent()
+            });
+        }
+
+        async function populateSelect($select, url, placeholder, selectedValue = null) {
+            $select.html('<option value="">Memuat...</option>').prop('disabled', true);
+            try {
+                const data = await $.getJSON(url);
+                let options = `<option value="">${placeholder}</option>`;
+                data.forEach(item => {
+                    options += `<option value="${item.id}">${item.nama}</option>`;
                 });
-            }
 
-            async function populateSelect($select, url, placeholder, selectedValue = null) {
-                $select.html('<option value="">Memuat...</option>').prop('disabled', true);
-                try {
-                    const data = await $.getJSON(url);
-                    let options = `<option value="">${placeholder}</option>`;
-                    data.forEach(item => {
-                        options += `<option value="${item.id}">${item.nama}</option>`;
-                    });
+                reloadSelect2($select, options, placeholder);
 
-                    reloadSelect2($select, options, placeholder);
-
-                    if (selectedValue) {
-                        setTimeout(function() {
-                            $select.val(selectedValue).trigger('change.select2');
-                        }, 50);
-                    }
-
-                    $select.prop('disabled', false);
-                } catch (error) {
-                    console.error(`Gagal memuat data dari ${url}`, error);
-                    $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
-                    throw error;
+                if (selectedValue) {
+                    setTimeout(function() {
+                        $select.val(selectedValue).trigger('change.select2');
+                    }, 50);
                 }
+
+                $select.prop('disabled', false);
+            } catch (error) {
+                console.error(`Gagal memuat data dari ${url}`, error);
+                $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
+                throw error;
             }
+        }
 
-            function bindLocationChangeEvents() {
-                $('.location-group').each(function() {
-                    const $group = $(this);
-                    const $prov = $group.find('.provinsi');
-                    const $kab = $group.find('.kabupaten');
-                    const $kec = $group.find('.kecamatan');
-                    const $kel = $group.find('.kelurahan');
+        function bindLocationChangeEvents() {
+            $('.location-group').each(function() {
+                const $group = $(this);
+                const $prov = $group.find('.provinsi');
+                const $kab = $group.find('.kabupaten');
+                const $kec = $group.find('.kecamatan');
+                const $kel = $group.find('.kelurahan');
 
-                    $prov.on('change', function() {
-                        const provId = $(this).val();
-                        if (provId) {
-                            populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
-                                '-- Pilih Kabupaten --');
-                        } else {
-                            $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
-                                .trigger('change');
-                        }
+                $prov.on('change', function() {
+                    const provId = $(this).val();
+                    if (provId) {
+                        populateSelect($kab, `/api/v1/regencies/${provId}`,
+                            '-- Pilih Kabupaten --');
+                    } else {
+                        $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
+                            .trigger('change');
+                    }
+                    $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
+                        .trigger('change');
+                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                        .trigger('change');
+                });
+
+                $kab.on('change', function() {
+                    const kabId = $(this).val();
+                    if (kabId) {
+                        populateSelect($kec, `/api/v1/districts/${kabId}`,
+                            '-- Pilih Kecamatan --');
+                    } else {
                         $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
                             .trigger('change');
-                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                            .trigger('change');
-                    });
-
-                    $kab.on('change', function() {
-                        const kabId = $(this).val();
-                        if (kabId) {
-                            populateSelect($kec, `/data-indonesia/kecamatan/${kabId}.json`,
-                                '-- Pilih Kecamatan --');
-                        } else {
-                            $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
-                                .trigger('change');
-                        }
-                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                            .trigger('change');
-                    });
-
-                    $kec.on('change', function() {
-                        const kecId = $(this).val();
-                        if (kecId) {
-                            populateSelect($kel, `/data-indonesia/kelurahan/${kecId}.json`,
-                                '-- Pilih Kelurahan --');
-                        } else {
-                            $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                                .trigger('change');
-                        }
-                    });
+                    }
+                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                        .trigger('change');
                 });
+
+                $kec.on('change', function() {
+                    const kecId = $(this).val();
+                    if (kecId) {
+                        populateSelect($kel, `/api/v1/villages/${kecId}`,
+                            '-- Pilih Kelurahan --');
+                    } else {
+                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                            .trigger('change');
+                    }
+                });
+            });
+        }
+
+
+        $(document).ready(async function() {
+            const $pengusulGroup = $('.location-group').eq(0);
+            await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/provinces',
+                '-- Pilih Provinsi --');
+
+            const $usahaGroup = $('.location-group').eq(1);
+            $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
+            $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
+            await populateSelect($usahaGroup.find('.kecamatan'),
+                `/api/v1/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --');
+
+            bindLocationChangeEvents();
+        });
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
+    </script>
+    <script>
+        setTimeout(function() {
+            const map = new google.maps.Map(document.getElementById("map"), {
+                center: {
+                    lat: -8.129955181277511,
+                    lng: 113.22306606906642
+                },
+                zoom: 11,
+                mapTypeId: "hybrid",
+            });
+
+            const drawingManager = new google.maps.drawing.DrawingManager({
+                drawingMode: null,
+                drawingControl: true,
+                drawingControlOptions: {
+                    position: google.maps.ControlPosition.TOP_LEFT,
+                    drawingModes: ["marker", "polyline", "polygon"],
+                },
+                markerOptions: {
+                    draggable: true,
+                },
+                polylineOptions: {
+                    strokeColor: "#DAD155",
+                    strokeOpacity: 1.0,
+                    strokeWeight: 3,
+                    editable: true,
+                },
+                polygonOptions: {
+                    fillColor: "#DAD155",
+                    fillOpacity: 0.5,
+                    strokeWeight: 2,
+                    clickable: true,
+                    editable: true,
+                    zIndex: 1,
+                },
+            });
+
+            drawingManager.setMap(map);
+
+            let currentOverlay = null;
+
+            function clearMap() {
+                if (currentOverlay) {
+                    currentOverlay.setMap(null);
+                    currentOverlay = null;
+                }
+                map.data.forEach(feature => map.data.remove(feature));
+                $('#json_geometry').val('');
             }
 
+            google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
+                clearMap();
+                $('#kml_file').val('');
 
-            $(document).ready(async function() {
-                const $pengusulGroup = $('.location-group').eq(0);
-                await populateSelect($pengusulGroup.find('.provinsi'), '/data-indonesia/provinsi.json',
-                    '-- Pilih Provinsi --');
+                currentOverlay = event.overlay;
 
-                const $usahaGroup = $('.location-group').eq(1);
-                $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
-                $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
-                await populateSelect($usahaGroup.find('.kecamatan'),
-                    `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`, '-- Pilih Kecamatan --');
+                let geojson = null;
 
-                bindLocationChangeEvents();
-            });
-        </script>
-        <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
-        </script>
-        <script>
-            setTimeout(function() {
-                const map = new google.maps.Map(document.getElementById("map"), {
-                    center: {
-                        lat: -8.129955181277511,
-                        lng: 113.22306606906642
-                    },
-                    zoom: 11,
-                    mapTypeId: "hybrid",
-                });
-
-                const drawingManager = new google.maps.drawing.DrawingManager({
-                    drawingMode: null,
-                    drawingControl: true,
-                    drawingControlOptions: {
-                        position: google.maps.ControlPosition.TOP_LEFT,
-                        drawingModes: ["marker", "polyline", "polygon"],
-                    },
-                    markerOptions: {
-                        draggable: true,
-                    },
-                    polylineOptions: {
-                        strokeColor: "#DAD155",
-                        strokeOpacity: 1.0,
-                        strokeWeight: 3,
-                        editable: true,
-                    },
-                    polygonOptions: {
-                        fillColor: "#DAD155",
-                        fillOpacity: 0.5,
-                        strokeWeight: 2,
-                        clickable: true,
-                        editable: true,
-                        zIndex: 1,
-                    },
-                });
-
-                drawingManager.setMap(map);
-
-                let currentOverlay = null;
-
-                function clearMap() {
-                    if (currentOverlay) {
-                        currentOverlay.setMap(null);
-                        currentOverlay = null;
-                    }
-                    map.data.forEach(feature => map.data.remove(feature));
-                    $('#json_geometry').val('');
+                if (event.type === "marker") {
+                    const position = event.overlay.getPosition();
+                    geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [position.lng(), position.lat()]
+                        },
+                        properties: {}
+                    };
+                } else if (event.type === "polyline") {
+                    const path = event.overlay.getPath().getArray();
+                    const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
+                    geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: "LineString",
+                            coordinates: coordinates
+                        },
+                        properties: {}
+                    };
+                } else if (event.type === "polygon") {
+                    const path = event.overlay.getPath().getArray();
+                    const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
+                    coordinates.push([path[0].lng(), path[0].lat()]);
+                    geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: "Polygon",
+                            coordinates: [coordinates]
+                        },
+                        properties: {}
+                    };
                 }
 
-                google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
-                    clearMap();
-                    $('#kml_file').val('');
+                document.getElementById("json_geometry").value = JSON.stringify(geojson);
 
-                    currentOverlay = event.overlay;
-
-                    let geojson = null;
-
-                    if (event.type === "marker") {
-                        const position = event.overlay.getPosition();
-                        geojson = {
-                            type: "Feature",
-                            geometry: {
-                                type: "Point",
-                                coordinates: [position.lng(), position.lat()]
-                            },
-                            properties: {}
-                        };
-                    } else if (event.type === "polyline") {
-                        const path = event.overlay.getPath().getArray();
-                        const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                        geojson = {
-                            type: "Feature",
-                            geometry: {
-                                type: "LineString",
-                                coordinates: coordinates
-                            },
-                            properties: {}
-                        };
-                    } else if (event.type === "polygon") {
-                        const path = event.overlay.getPath().getArray();
-                        const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                        coordinates.push([path[0].lng(), path[0].lat()]);
-                        geojson = {
-                            type: "Feature",
-                            geometry: {
-                                type: "Polygon",
-                                coordinates: [coordinates]
-                            },
-                            properties: {}
-                        };
+                if (event.type === "marker") {
+                    map.setCenter(event.overlay.getPosition());
+                    map.setZoom(16);
+                } else {
+                    const bounds = new google.maps.LatLngBounds();
+                    if (event.type === "polyline" || event.type === "polygon") {
+                        event.overlay.getPath().forEach(p => bounds.extend(p));
+                        map.fitBounds(bounds);
                     }
+                }
+            });
 
-                    document.getElementById("json_geometry").value = JSON.stringify(geojson);
+            $('#kml_file').on('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
 
-                    if (event.type === "marker") {
-                        map.setCenter(event.overlay.getPosition());
-                        map.setZoom(16);
-                    } else {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const kmlText = event.target.result;
+                    const dom = (new DOMParser()).parseFromString(kmlText, 'text/xml');
+                    const geojson = toGeoJSON.kml(dom);
+
+                    if (geojson && geojson.features && geojson.features.length > 0) {
+                        clearMap();
+
+                        // Ambil feature pertama dan masukkan ke hidden input
+                        const firstFeature = geojson.features[0];
+                        $('#json_geometry').val(JSON.stringify(firstFeature));
+
+                        // Tampilkan semua feature di peta untuk preview
+                        map.data.addGeoJson(geojson);
+
+                        // Zoom ke area KML
                         const bounds = new google.maps.LatLngBounds();
-                        if (event.type === "polyline" || event.type === "polygon") {
-                            event.overlay.getPath().forEach(p => bounds.extend(p));
-                            map.fitBounds(bounds);
-                        }
+                        map.data.forEach(feature => {
+                            feature.getGeometry().forEachLatLng(latlng => bounds.extend(
+                                latlng));
+                        });
+                        map.fitBounds(bounds);
+                    } else {
+                        alert('Berkas KML tidak valid atau tidak berisi data koordinat.');
+                        $(this).val(''); // Reset input file jika error
                     }
-                });
+                };
+                reader.readAsText(file);
+            });
 
-                $('#kml_file').on('change', function(e) {
+        }, 500);
+    </script>
+    {{-- @endif --}}
+
+    @if ($type == 'kkpr')
+        <script>
+            $(document).ready(function() {
+                const apiToken = $('meta[name="api-token"]').attr('content');
+
+                $('.attachment-uploader').on('change', function(e) {
+                    const fileInput = $(this);
+                    const targetHiddenInput = $(fileInput.data('target'));
+                    const statusDiv = fileInput.siblings('.upload-status');
                     const file = e.target.files[0];
+
                     if (!file) return;
 
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        const kmlText = event.target.result;
-                        const dom = (new DOMParser()).parseFromString(kmlText, 'text/xml');
-                        const geojson = toGeoJSON.kml(dom);
+                    // Reset status
+                    targetHiddenInput.val('');
+                    statusDiv.html('<span class="text-warning">Mengunggah...</span>');
 
-                        if (geojson && geojson.features && geojson.features.length > 0) {
-                            clearMap();
+                    // Siapkan data untuk dikirim ke API
+                    const formData = new FormData();
+                    formData.append('attachment', file);
 
-                            // Ambil feature pertama dan masukkan ke hidden input
-                            const firstFeature = geojson.features[0];
-                            $('#json_geometry').val(JSON.stringify(firstFeature));
-
-                            // Tampilkan semua feature di peta untuk preview
-                            map.data.addGeoJson(geojson);
-
-                            // Zoom ke area KML
-                            const bounds = new google.maps.LatLngBounds();
-                            map.data.forEach(feature => {
-                                feature.getGeometry().forEachLatLng(latlng => bounds.extend(
-                                    latlng));
-                            });
-                            map.fitBounds(bounds);
-                        } else {
-                            alert('Berkas KML tidak valid atau tidak berisi data koordinat.');
-                            $(this).val(''); // Reset input file jika error
-                        }
-                    };
-                    reader.readAsText(file);
+                    // Kirim file ke API pakai Fetch API
+                    fetch('{{ route('api.attachments.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${apiToken}`,
+                                'Accept': 'application/json',
+                            },
+                            body: formData
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                // Tangani error dari server (misal validasi gagal)
+                                return response.json().then(err => {
+                                    throw err;
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                // Jika sukses, isi input hidden dengan path dari API
+                                targetHiddenInput.val(data.path);
+                                // Tampilkan pesan sukses dan nama file
+                                statusDiv.html(
+                                    `<span class="text-success">✓ Berhasil diunggah: ${file.name}</span>`
+                                );
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Upload error:', error);
+                            // Tampilkan pesan error
+                            let errorMessage = 'Gagal mengunggah file. Coba lagi.';
+                            if (error.errors && error.errors.attachment) {
+                                errorMessage = error.errors.attachment[0]; // Ambil pesan error validasi
+                            }
+                            statusDiv.html(`<span class="text-danger">✗ ${errorMessage}</span>`);
+                        });
                 });
-
-            }, 500);
+            });
         </script>
     @endif
 @endsection
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <x-breadcrumb :items="[
+        {{-- <x-breadcrumb :items="[
             ['text' => 'Permohonan ' . strtoupper($type), 'url' => route('permohonan.index') . '?type=' . $type],
             ['text' => 'Tambah Permohonan'],
-        ]" />
+        ]" /> --}}
 
-        <form action="{{ route('permohonan.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('permohonan.store') }}" method="POST" enctype="multipart/form-data" id="permohonanForm">
             @csrf
             <input type="hidden" name="var_type" value="{{ $type }}">
             <div class="row">
@@ -308,56 +403,56 @@
                                     @errorFeedback('text_alamat')
                                 </div>
                             </div>
-                            @if ($type == 'sitr/rdtr')
-                                <div class="location-group">
-                                    <div class="mb-4 row">
-                                        <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_provinsi" id="var_provinsi"
-                                                class="form-select  select2 provinsi @error('var_provinsi') is-invalid @enderror">
-                                                <option value="">-- Pilih Provinsi --</option>
-                                            </select>
-                                            @errorFeedback('var_provinsi')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row">
-                                        <label for="var_kabupaten" class="col-sm-3 col-form-label">Kabupaten</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kabupaten" id="var_kabupaten"
-                                                class="form-select select2 kabupaten @error('var_kabupaten') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kabupaten --</option>
-                                            </select>
-                                            @errorFeedback('var_kabupaten')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row">
-                                        <label for="var_kecamatan" class="col-sm-3 col-form-label">Kecamatan</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kecamatan" id="var_kecamatan"
-                                                class="form-select select2 kecamatan @error('var_kecamatan') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kecamatan --</option>
-                                            </select>
-                                            @errorFeedback('var_kecamatan')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row">
-                                        <label for="var_kelurahan" class="col-sm-3 col-form-label">Kelurahan</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kelurahan" id="var_kelurahan"
-                                                class="form-select select2 kelurahan @error('var_kelurahan') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kelurahan --</option>
-                                            </select>
-                                            @errorFeedback('var_kelurahan')
-                                        </div>
+                            {{-- @if ($type == 'sitr/rdtr') --}}
+                            <div class="location-group">
+                                <div class="mb-4 row">
+                                    <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_provinsi" id="var_provinsi"
+                                            class="form-select  select2 provinsi @error('var_provinsi') is-invalid @enderror">
+                                            <option value="">-- Pilih Provinsi --</option>
+                                        </select>
+                                        @errorFeedback('var_provinsi')
                                     </div>
                                 </div>
-                            @endif
+
+                                <div class="mb-4 row">
+                                    <label for="var_kabupaten" class="col-sm-3 col-form-label">Kabupaten</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kabupaten" id="var_kabupaten"
+                                            class="form-select select2 kabupaten @error('var_kabupaten') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kabupaten --</option>
+                                        </select>
+                                        @errorFeedback('var_kabupaten')
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 row">
+                                    <label for="var_kecamatan" class="col-sm-3 col-form-label">Kecamatan</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kecamatan" id="var_kecamatan"
+                                            class="form-select select2 kecamatan @error('var_kecamatan') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kecamatan --</option>
+                                        </select>
+                                        @errorFeedback('var_kecamatan')
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 row">
+                                    <label for="var_kelurahan" class="col-sm-3 col-form-label">Kelurahan</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kelurahan" id="var_kelurahan"
+                                            class="form-select select2 kelurahan @error('var_kelurahan') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kelurahan --</option>
+                                        </select>
+                                        @errorFeedback('var_kelurahan')
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- @endif --}}
 
                             <div class="mb-4 row">
                                 <label for="var_email" class="col-sm-3 col-form-label">Email</label>
@@ -446,6 +541,28 @@
                                     @errorFeedback('text_alamat_usaha')
                                 </div>
                             </div>
+                            @if ($type == 'kkpr')
+                                <div class="mb-4 row">
+                                    <label for="var_npwp_pemohon_atau_badan_usaha" class="col-sm-3 col-form-label">NPWP
+                                        Pemohon/Badan Usaha</label>
+                                    <div class="col-12">
+                                        <input type="text" name="var_npwp_pemohon_atau_badan_usaha"
+                                            id="var_npwp_pemohon_atau_badan_usaha"
+                                            class="form-control  @error('var_npwp_pemohon_atau_badan_usaha') is-invalid @enderror"
+                                            rows="3" required>{{ old('var_npwp_pemohon_atau_badan_usaha') }}</input>
+                                        @errorFeedback('var_npwp_pemohon_atau_badan_usaha')
+                                    </div>
+                                </div>
+                                <div class="mb-4 row">
+                                    <label for="var_jenis_kegiatan" class="col-sm-3 col-form-label">Jenis Kegiatan</label>
+                                    <div class="col-12">
+                                        <input type="text" name="var_jenis_kegiatan" id="var_jenis_kegiatan"
+                                            class="form-control  @error('var_jenis_kegiatan') is-invalid @enderror"
+                                            rows="3" required>{{ old('var_jenis_kegiatan') }}</input>
+                                        @errorFeedback('var_jenis_kegiatan')
+                                    </div>
+                                </div>
+                            @endif
                             @if ($type == 'sitr/rdtr')
                                 <div class="location-group">
                                     <div class="mb-4 row d-none">
@@ -621,6 +738,107 @@
                         </div>
                     </div>
                 </div>
+                @if ($type == 'kkpr')
+                    <div class="col-12 mt-4">
+                        <div class="card">
+                            <h5 class="card-header border-bottom mb-3">Lampiran</h5>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="file_ktp" class="form-label">Fotocopy KTP</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_ktp"
+                                        data-target="#var_fotocopy_ktp_attachment">
+                                    <input type="hidden" name="var_fotocopy_ktp_attachment"
+                                        id="var_fotocopy_ktp_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_fotocopy_ktp_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_npwp" class="form-label">Fotocopy NPWP</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_npwp"
+                                        data-target="#var_fotocopy_npwp_attachment">
+                                    <input type="hidden" name="var_fotocopy_npwp_attachment"
+                                        id="var_fotocopy_npwp_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_fotocopy_npwp_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_foto_lokasi" class="form-label">Foto Lokasi Rencana Kegiatan</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_foto_lokasi"
+                                        data-target="#var_foto_lokasi_rencana_kegiatan_attachment">
+                                    <input type="hidden" name="var_foto_lokasi_rencana_kegiatan_attachment"
+                                        id="var_foto_lokasi_rencana_kegiatan_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_foto_lokasi_rencana_kegiatan_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_titik_koordinat" class="form-label">Titik Koordinat</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_titik_koordinat" data-target="#var_titik_koordinat_attachment">
+                                    <input type="hidden" name="var_titik_koordinat_attachment"
+                                        id="var_titik_koordinat_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_titik_koordinat_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_sitr" class="form-label">SITR</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_sitr"
+                                        data-target="#var_sitr_attachment">
+                                    <input type="hidden" name="var_sitr_attachment" id="var_sitr_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_sitr_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_lp2b" class="form-label">LP2B</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_lp2b"
+                                        data-target="#var_lp2b_attachment">
+                                    <input type="hidden" name="var_lp2b_attachment" id="var_lp2b_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_lp2b_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_bukti_penguasaan_tanah" class="form-label">Bukti Penguasaan
+                                        Tanah</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_bukti_penguasaan_tanah"
+                                        data-target="#var_bukti_penguasaan_tanah_attachment">
+                                    <input type="hidden" name="var_bukti_penguasaan_tanah_attachment"
+                                        id="var_bukti_penguasaan_tanah_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_bukti_penguasaan_tanah_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_rencana_teknis_bangunan" class="form-label">Rencana Teknis
+                                        Bangunan</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_rencana_teknis_bangunan"
+                                        data-target="#var_rencana_teknis_bangunan_attachment">
+                                    <input type="hidden" name="var_rencana_teknis_bangunan_attachment"
+                                        id="var_rencana_teknis_bangunan_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_rencana_teknis_bangunan_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_ptp_kkpr_nonberusaha" class="form-label">PTP KKPR Nonberusaha</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_ptp_kkpr_nonberusaha" data-target="#var_ptp_kkpr_nonberusaha_attachment">
+                                    <input type="hidden" name="var_ptp_kkpr_nonberusaha_attachment"
+                                        id="var_ptp_kkpr_nonberusaha_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_ptp_kkpr_nonberusaha_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_akta_pendirian_badan" class="form-label">Akta Pendirian Badan</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_akta_pendirian_badan" data-target="#var_akta_pendirian_badan_attachment">
+                                    <input type="hidden" name="var_akta_pendirian_badan_attachment"
+                                        id="var_akta_pendirian_badan_attachment">
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_akta_pendirian_badan_attachment')
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="col-12 mt-4">
                     <button type="submit" class="btn btn-success">Simpan</button>

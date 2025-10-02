@@ -41,6 +41,20 @@ class KkprRequest extends FormRequest
             'var_url_lampiran' => 'string|max:255|nullable',
             'enum_status' => 'in:pending,approved,rejected',
             'pilihan_redaksi_ids' => 'array|nullable',
+
+            'var_npwp_pemohon_atau_badan_usaha' => 'string|max:255|nullable',
+            'var_jenis_kegiatan' => 'string|max:255|nullable',
+
+            'var_fotocopy_ktp_attachment' => 'string|max:255|nullable',
+            'var_fotocopy_npwp_attachment' => 'string|max:255|nullable',
+            'var_foto_lokasi_rencana_kegiatan_attachment' => 'string|max:255|nullable',
+            'var_titik_koordinat_attachment' => 'string|max:255|nullable',
+            'var_sitr_attachment' => 'string|max:255|nullable',
+            'var_lp2b_attachment' => 'string|max:255|nullable',
+            'var_bukti_penguasaan_tanah_attachment' => 'string|max:255|nullable',
+            'var_rencana_teknis_bangunan_attachment' => 'string|max:255|nullable',
+            'var_ptp_kkpr_nonberusaha_attachment' => 'string|max:255|nullable',
+            'var_akta_pendirian_badan_attachment' => 'string|max:255|nullable',
         ];
 
         // Jika methodnya POST (create), tambahkan aturan 'required'

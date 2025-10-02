@@ -59,7 +59,7 @@
                     $prov.on('change', function() {
                         const provId = $(this).val();
                         if (provId) {
-                            populateSelect($kab, `/data-indonesia/kabupaten/${provId}.json`,
+                            populateSelect($kab, `/api/v1/regencies/${provId}`,
                                 '-- Pilih Kabupaten --');
                         } else {
                             $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
@@ -74,7 +74,7 @@
                     $kab.on('change', function() {
                         const kabId = $(this).val();
                         if (kabId) {
-                            populateSelect($kec, `/data-indonesia/kecamatan/${kabId}.json`,
+                            populateSelect($kec, `/api/v1/districts/${kabId}`,
                                 '-- Pilih Kecamatan --');
                         } else {
                             $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
@@ -87,7 +87,7 @@
                     $kec.on('change', function() {
                         const kecId = $(this).val();
                         if (kecId) {
-                            populateSelect($kel, `/data-indonesia/kelurahan/${kecId}.json`,
+                            populateSelect($kel, `/api/v1/villages/${kecId}`,
                                 '-- Pilih Kelurahan --');
                         } else {
                             $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
@@ -99,21 +99,21 @@
 
             $(document).ready(async function() {
                 const $pengusulGroup = $('.location-group').eq(0);
-                await populateSelect($pengusulGroup.find('.provinsi'), '/data-indonesia/provinsi.json',
+                await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/provinces',
                     '-- Pilih Provinsi --', @json(old('var_provinsi', $permohonan->var_provinsi ?? '')));
                 if (@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))) {
                     await populateSelect($pengusulGroup.find('.kabupaten'),
-                        `/data-indonesia/kabupaten/${@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))}.json`,
+                        `/api/v1/regencies/${@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))}`,
                         '-- Pilih Kabupaten --', @json(old('var_kabupaten', $permohonan->var_kabupaten ?? '')));
                 }
                 if (@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))) {
                     await populateSelect($pengusulGroup.find('.kecamatan'),
-                        `/data-indonesia/kecamatan/${@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))}.json`,
+                        `/api/v1/districts/${@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))}`,
                         '-- Pilih Kecamatan --', @json(old('var_kecamatan', $permohonan->var_kecamatan ?? '')));
                 }
                 if (@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))) {
                     await populateSelect($pengusulGroup.find('.kelurahan'),
-                        `/data-indonesia/kelurahan/${@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))}.json`,
+                        `/api/v1/villages/${@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))}`,
                         '-- Pilih Kelurahan --', @json(old('var_kelurahan', $permohonan->var_kelurahan ?? '')));
                 }
 
@@ -121,11 +121,11 @@
                 $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
                 $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
                 await populateSelect($usahaGroup.find('.kecamatan'),
-                    `/data-indonesia/kecamatan/${KABUPATEN_ID_DEFAULT}.json`, '-- Pilih Kecamatan --',
+                    `/api/v1/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --',
                     @json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? '')));
                 if (@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))) {
                     await populateSelect($usahaGroup.find('.kelurahan'),
-                        `/data-indonesia/kelurahan/${@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))}.json`,
+                        `/api/v1/villages/${@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))}`,
                         '-- Pilih Kelurahan --', @json(old('var_kelurahan_usaha', $permohonan->var_kelurahan_usaha ?? '')));
                 }
 

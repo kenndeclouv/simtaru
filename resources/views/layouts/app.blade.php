@@ -21,6 +21,8 @@
 
     <!-- Helpers -->
     @include('layouts.layout_partials.helpers')
+
+    @yield('page-header')
 </head>
 
 

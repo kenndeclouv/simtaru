@@ -95,37 +95,17 @@ if (!function_exists('convertCase')) {
 if (!function_exists('getProvinsi')) {
     function getProvinsi()
     {
-        $path = public_path('data-indonesia/provinsi.json');
-        if (!file_exists($path)) {
-            return [];
-        }
-        $json = file_get_contents($path);
-        return json_decode($json, true) ?? [];
+        return \App\Models\Province::select('id', 'name as nama')->get()->toArray();
     }
 }
 
 if (!function_exists('getKabupaten')) {
     function getKabupaten($provinsiId)
     {
-        // Variabel statis akan 'mengingat' nilainya selama request berjalan
-        static $cache = [];
-
-        if (isset($cache[$provinsiId])) {
-            return $cache[$provinsiId]; // Jika sudah ada di cache, langsung kembalikan
-        }
-
-        $path = public_path("data-indonesia/kabupaten/{$provinsiId}.json");
-        if (!file_exists($path)) {
-            return [];
-        }
-
-        $json = file_get_contents($path);
-        $data = json_decode($json, true) ?? [];
-
-        // Simpan hasilnya ke cache sebelum dikembalikan
-        $cache[$provinsiId] = $data;
-
-        return $data;
+        return \App\Models\Regency::where('province_id', $provinsiId)
+            ->select('id', 'name as nama')
+            ->get()
+            ->toArray();
     }
 }
 
@@ -133,32 +113,19 @@ if (!function_exists('getKabupaten')) {
 if (!function_exists('getKecamatan')) {
     function getKecamatan($kabupatenId)
     {
-        static $cache = [];
-        if (isset($cache[$kabupatenId])) return $cache[$kabupatenId];
-
-        $path = public_path("data-indonesia/kecamatan/{$kabupatenId}.json");
-        if (!file_exists($path)) return [];
-
-        $json = file_get_contents($path);
-        $data = json_decode($json, true) ?? [];
-        $cache[$kabupatenId] = $data;
-        return $data;
+        return \App\Models\District::where('regency_id', $kabupatenId)
+            ->select('id', 'name as nama')
+            ->get()
+            ->toArray();
     }
 }
 
 if (!function_exists('getKelurahan')) {
     function getKelurahan($kecamatanId)
-    
     {
-        static $cache = [];
-        if (isset($cache[$kecamatanId])) return $cache[$kecamatanId];
-
-        $path = public_path("data-indonesia/kecamatan/{$kecamatanId}.json");
-        if (!file_exists($path)) return [];
-
-        $json = file_get_contents($path);
-        $data = json_decode($json, true) ?? [];
-        $cache[$kecamatanId] = $data;
-        return $data;
+        return \App\Models\Village::where('district_id', $kecamatanId)
+            ->select('id', 'name as nama')
+            ->get()
+            ->toArray();
     }
 }

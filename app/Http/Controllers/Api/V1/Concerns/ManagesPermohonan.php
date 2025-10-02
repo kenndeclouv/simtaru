@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api\V1\Concerns;
 use App\Http\Resources\PermohonanResource;
 use App\Models\KeyStorage;
 use App\Models\Permohonan;
+use App\Models\PermohonanTemplateDoc;
+use App\Models\TemplateDocs;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 
 trait ManagesPermohonan
 {
@@ -24,6 +27,7 @@ trait ManagesPermohonan
         $validated = $request->validated();
         $validated['var_type'] = $this->permohonanType;
 
+        // Generate nomor permohonan & pengesahan
         $tahun = now()->year;
         $last = (Permohonan::latest()->first()->id ?? 0) + 1;
         $preFixNomorPermohonan = KeyStorage::where('var_key', 'preFixNomorPermohonan')->first()->var_value;
@@ -34,10 +38,51 @@ trait ManagesPermohonan
         $validated['var_nomor_permohonan'] = "{$preFixNomorPermohonan}{$last}{$postFixNomorPermohonan}{$tahun}";
         $validated['var_nomor_pengesahan'] = "{$preFixNomorSurat}{$last}{$postFixNomorSurat}{$tahun}";
 
+        // Buat permohonan DULUAN, tanpa data attachment
         $permohonan = Permohonan::create($validated);
 
+        // Proses attachment
+        $attachmentFields = [
+            'var_fotocopy_ktp_attachment',
+            'var_fotocopy_npwp_attachment',
+            'var_foto_lokasi_rencana_kegiatan_attachment',
+            'var_titik_koordinat_attachment',
+            'var_sitr_attachment',
+            'var_lp2b_attachment',
+            'var_bukti_penguasaan_tanah_attachment',
+            'var_rencana_teknis_bangunan_attachment',
+            'var_ptp_kkpr_nonberusaha_attachment',
+            'var_akta_pendirian_badan_attachment',
+        ];
+
+        $finalAttachmentPaths = [];
+
+        foreach ($attachmentFields as $field) {
+            $tempPath = $validated[$field] ?? null;  // e.g., "tmp/randomname.pdf"
+            if ($tempPath && Storage::disk('public')->exists($tempPath)) {
+                $fileName = basename($tempPath);
+                $permanentPath = "permohonan/{$permohonan->id}/{$field}/{$fileName}";
+                Storage::disk('public')->move($tempPath, $permanentPath);
+                $finalAttachmentPaths[$field] = $permanentPath;
+            }
+        }
+
+        // Update record permohonan dengan path attachment yang permanen
+        if (!empty($finalAttachmentPaths)) {
+            $permohonan->update($finalAttachmentPaths);
+        }
+
+        // Proses relasi template docs
         if (isset($validated['pilihan_redaksi_ids'])) {
-            $permohonan->templateDocs()->attach($validated['pilihan_redaksi_ids']);
+            foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
+                $template_doc = TemplateDocs::find($template_doc_id);
+                if ($template_doc) {
+                    PermohonanTemplateDoc::create([
+                        'fk_permohonan_id' => $permohonan->id,
+                        'fk_template_docs_id' => $template_doc->id
+                    ]);
+                }
+            }
         }
 
         return (new PermohonanResource($permohonan->load('templateDocs')))
@@ -60,10 +105,54 @@ trait ManagesPermohonan
             abort(404, 'Data tidak ditemukan.');
         }
         $validated = $request->validated();
-        $permohonan->update($validated);
 
+        // Proses attachment
+        $attachmentFields = [
+            'var_fotocopy_ktp_attachment',
+            'var_fotocopy_npwp_attachment',
+            'var_foto_lokasi_rencana_kegiatan_attachment',
+            'var_titik_koordinat_attachment',
+            'var_sitr_attachment',
+            'var_lp2b_attachment',
+            'var_bukti_penguasaan_tanah_attachment',
+            'var_rencana_teknis_bangunan_attachment',
+            'var_ptp_kkpr_nonberusaha_attachment',
+            'var_akta_pendirian_badan_attachment',
+        ];
+
+        $finalAttachmentPaths = [];
+
+        foreach ($attachmentFields as $field) {
+            $tempPath = $validated[$field] ?? null;  // e.g., "tmp/randomname.pdf"
+            if ($tempPath && Storage::disk('public')->exists($tempPath)) {
+                // Delete old file if exists
+                if ($permohonan->$field && Storage::disk('public')->exists($permohonan->$field)) {
+                    Storage::disk('public')->delete($permohonan->$field);
+                }
+
+                $fileName = basename($tempPath);
+                $permanentPath = "permohonan/{$permohonan->id}/{$field}/{$fileName}";
+                Storage::disk('public')->move($tempPath, $permanentPath);
+                $finalAttachmentPaths[$field] = $permanentPath;
+            }
+        }
+
+        // Update record permohonan dengan data validated dan path attachment yang permanen
+        $updateData = array_merge($validated, $finalAttachmentPaths);
+        $permohonan->update($updateData);
+
+        // Proses relasi template docs
         if (isset($validated['pilihan_redaksi_ids'])) {
-            $permohonan->templateDocs()->sync($validated['pilihan_redaksi_ids']);
+            $permohonan->templateDocs()->detach();
+            foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
+                $template_doc = TemplateDocs::find($template_doc_id);
+                if ($template_doc) {
+                    PermohonanTemplateDoc::create([
+                        'fk_permohonan_id' => $permohonan->id,
+                        'fk_template_docs_id' => $template_doc->id
+                    ]);
+                }
+            }
         }
 
         return (new PermohonanResource($permohonan->load('templateDocs')))

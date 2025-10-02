@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\KkprController;
 use App\Http\Controllers\Api\V1\SitrRdtrController;
+use App\Http\Controllers\LocationController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'v1'], function () {
@@ -20,4 +22,11 @@ Route::group(['prefix' => 'v1'], function () {
             'kkpr' => 'permohonan' // Alias parameter agar Route Model Binding tetap bekerja
         ]);
     });
+
+    Route::get('/provinces', [LocationController::class, 'provinces']);
+    Route::get('/regencies/{provinceId}', [LocationController::class, 'regencies']);
+    Route::get('/districts/{regencyId}', [LocationController::class, 'districts']);
+    Route::get('/villages/{districtId}', [LocationController::class, 'villages']);
+
+    Route::post('/attachments', [AttachmentController::class, 'store'])->name('api.attachments.store');
 });
