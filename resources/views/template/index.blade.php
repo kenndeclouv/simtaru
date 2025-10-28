@@ -151,7 +151,7 @@
         </div>
         <!-- Help modal -->
         <div class="modal fade" id="modalHelp" tabindex="-1" aria-labelledby="modalHelpLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog" style="max-width: 80vw">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalHelpLabel">Bantuan</h5>
@@ -160,7 +160,7 @@
                     <div class="modal-body">
                         <p>Silahkan upload file template dokumen yang akan digunakan untuk membuat dokumen.</p>
                         <p>Placeholder adalah variabel yang akan diganti dengan data yang diinputkan.</p>
-                        <table class="table table-bordered">
+                        <table class="table table-bordered table-responsive">
                             <thead>
                                 <tr>
                                     <th>Placeholder</th>
@@ -168,6 +168,10 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <tr>
+                                    <td>${var_type}</td>
+                                    <td>Tipe permohonan (sitr/rdtr/kkpr).</td>
+                                </tr>
                                 <tr>
                                     <td>${var_nik}</td>
                                     <td>NIK pemohon.</td>
@@ -210,15 +214,15 @@
                                 </tr>
                                 <tr>
                                     <td>${var_nama_usaha}</td>
-                                    <td>Nama usaha yang diajukan.</td>
+                                    <td>Nama usaha/badan usaha yang diajukan.</td>
                                 </tr>
                                 <tr>
                                     <td>${var_bentuk_usaha}</td>
-                                    <td>Bentuk usaha yang diajukan.</td>
+                                    <td>Bentuk usaha/badan usaha.</td>
                                 </tr>
                                 <tr>
                                     <td>${text_alamat_usaha}</td>
-                                    <td>Alamat lengkap usaha.</td>
+                                    <td>Alamat lengkap lokasi usaha/badan usaha.</td>
                                 </tr>
                                 <tr>
                                     <td>${var_kecamatan_usaha}</td>
@@ -230,19 +234,38 @@
                                 </tr>
                                 <tr>
                                     <td>${var_rencana_usaha}</td>
-                                    <td>Rencana usaha yang akan dijalankan.</td>
+                                    <td>Rencana usaha/kegiatan yang akan dijalankan.</td>
                                 </tr>
                                 <tr>
                                     <td>${dec_rencana_luas_lantai}</td>
-                                    <td>Luas lantai rencana usaha (m<sup>2</sup>).</td>
+                                    <td>Luas lantai rencana usaha (m<sup>2</sup>), jika ada.</td>
+                                </tr>
+                                <tr class="table-info"> {{-- Ini cuma buat ngasih warna beda --}}
+                                    <td colspan="2">
+                                        <strong><i class="fa-solid fa-map-location-dot"></i> Placeholder Khusus Geometri (Tabel Koordinat)</strong>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td>${json_geometry}</td>
-                                    <td>Data geometri lokasi usaha (format JSON).</td>
+                                    <td>${koor_no}</td>
+                                    <td>Nomor urut untuk tabel koordinat (Contoh: 1, 2, 3, ...).</td>
                                 </tr>
                                 <tr>
-                                    <td>${var_gambar_area}</td>
-                                    <td>Gambar area lokasi usaha.</td>
+                                    <td>${koor_lng}</td>
+                                    <td>Koordinat Longitude (Contoh: 113.1193).</td>
+                                </tr>
+                                <tr>
+                                    <td>${koor_lat}</td>
+                                    <td>Koordinat Latitude (Contoh: -8.0783).</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">
+                                        <small>
+                                            <strong><i class="fa-solid fa-triangle-exclamation"></i> Catatan PENTING:</strong> 
+                                            Ketiga placeholder di atas <strong>WAJIB</strong> diletakkan di dalam 
+                                            <strong>tabel 1 baris</strong> di file .docx (Contoh: | ${koor_no} | ${koor_lng} | ${koor_lat} |). 
+                                            Sistem akan otomatis meng-kloning baris tersebut untuk mengisi semua data koordinat.
+                                        </small>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td>${var_nomor_permohonan}</td>
@@ -254,11 +277,71 @@
                                 </tr>
                                 <tr>
                                     <td>${var_nomor_pengesahan}</td>
-                                    <td>Nomor pengesahan permohonan.</td>
+                                    <td>Nomor pengesahan permohonan (jika sudah disahkan).</td>
                                 </tr>
                                 <tr>
                                     <td>${date_tanggal_pengesahan}</td>
-                                    <td>Tanggal pengesahan permohonan.</td>
+                                    <td>Tanggal pengesahan permohonan (jika sudah disahkan).</td>
+                                </tr>
+                                <tr>
+                                    <td>${text_catatan}</td>
+                                    <td>Catatan permohonan (jika ada).</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_npwp_pemohon_atau_badan_usaha}</td>
+                                    <td>NPWP pemohon atau badan usaha.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_jenis_kegiatan}</td>
+                                    <td>Jenis kegiatan usaha/kegiatan yang diajukan.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_fotocopy_ktp_attachment}</td>
+                                    <td>Link lampiran Fotocopy KTP.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_fotocopy_npwp_attachment}</td>
+                                    <td>Link lampiran Fotocopy NPWP.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_foto_lokasi_rencana_kegiatan_attachment}</td>
+                                    <td>Link lampiran Foto Lokasi Rencana Kegiatan.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_titik_koordinat_attachment}</td>
+                                    <td>Link lampiran file titik koordinat lokasi.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_sitr_attachment}</td>
+                                    <td>Link lampiran dokumen SITR.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_lp2b_attachment}</td>
+                                    <td>Link lampiran dokumen LP2B.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_bukti_penguasaan_tanah_attachment}</td>
+                                    <td>Link lampiran Bukti Penguasaan Tanah.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_rencana_teknis_bangunan_attachment}</td>
+                                    <td>Link lampiran Rencana Teknis Bangunan.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_ptp_kkpr_nonberusaha_attachment}</td>
+                                    <td>Link lampiran PTP KKPR Nonberusaha.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_akta_pendirian_badan_attachment}</td>
+                                    <td>Link lampiran Akta Pendirian Badan Usaha.</td>
+                                </tr>
+                                <tr>
+                                    <td>${var_url_lampiran}</td>
+                                    <td>URL lampiran tambahan (opsional).</td>
+                                </tr>
+                                <tr>
+                                    <td>${enum_status}</td>
+                                    <td>Status permohonan (pending, approved, rejected).</td>
                                 </tr>
                             </tbody>
                         </table>

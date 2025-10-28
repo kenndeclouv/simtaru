@@ -2,343 +2,270 @@
 
 @section('title', 'Edit Permohonan SITR')
 
+@section('page-header')
+    <meta name="api-token" content="{{ $apiToken }}">
+@endsection
+
 @section('page-script')
     <script>
         $(document).ready(function() {
             $('.select2').select2();
         });
     </script>
-    @if ($type == 'sitr/rdtr')
-        <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
-        <script>
-            const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
-            const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
+    {{-- @if ($type == 'sitr/rdtr') --}}
+    <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
+    <script>
+        const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
+        const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
 
-            function reloadSelect2($select, options, placeholder = '') {
-                $select.html(options);
-                $select.select2({
-                    width: '100%',
-                    placeholder: placeholder,
-                    dropdownParent: $select.parent()
-                });
-            }
+        function reloadSelect2($select, options, placeholder = '') {
+            $select.html(options);
+            $select.select2({
+                width: '100%',
+                placeholder: placeholder,
+                dropdownParent: $select.parent()
+            });
+        }
 
-            async function populateSelect($select, url, placeholder, selectedValue = null) {
-                $select.html('<option value="">Memuat...</option>').prop('disabled', true);
-                try {
-                    const data = await $.getJSON(url);
-                    let options = `<option value="">${placeholder}</option>`;
-                    data.forEach(item => {
+        async function populateSelect($select, url, placeholder, selectedValue = null) {
+            $select.html('<option value="">Memuat...</option>').prop('disabled', true);
+            try {
+                const res = await $.getJSON(url);
+                // Correction: API response is {success: true, data: [...], message: ""}
+                let options = `<option value="">${placeholder}</option>`;
+                if (res && res.data && Array.isArray(res.data)) {
+                    res.data.forEach(item => {
                         options += `<option value="${item.id}">${item.nama}</option>`;
                     });
-
-                    reloadSelect2($select, options, placeholder);
-
-                    if (selectedValue) {
-                        setTimeout(function() {
-                            $select.val(selectedValue).trigger('change.select2');
-                        }, 50);
-                    }
-
-                    $select.prop('disabled', false);
-                } catch (error) {
-                    console.error(`Gagal memuat data dari ${url}`, error);
-                    $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
-                    throw error;
                 }
+
+                reloadSelect2($select, options, placeholder);
+
+                if (selectedValue) {
+                    setTimeout(function() {
+                        $select.val(selectedValue).trigger('change.select2');
+                    }, 50);
+                }
+
+                $select.prop('disabled', false);
+            } catch (error) {
+                console.error(`Gagal memuat data dari ${url}`, error);
+                $select.html(`<option value="">Gagal memuat</option>`).prop('disabled', true);
+                throw error;
             }
+        }
 
-            function bindLocationChangeEvents() {
-                $('.location-group').each(function() {
-                    const $group = $(this);
-                    const $prov = $group.find('.provinsi');
-                    const $kab = $group.find('.kabupaten');
-                    const $kec = $group.find('.kecamatan');
-                    const $kel = $group.find('.kelurahan');
+        function bindLocationChangeEvents() {
+            $('.location-group').each(function() {
+                const $group = $(this);
+                const $prov = $group.find('.provinsi');
+                const $kab = $group.find('.kabupaten');
+                const $kec = $group.find('.kecamatan');
+                const $kel = $group.find('.kelurahan');
 
-                    $prov.on('change', function() {
-                        const provId = $(this).val();
-                        if (provId) {
-                            populateSelect($kab, `/api/v1/regencies/${provId}`,
-                                '-- Pilih Kabupaten --');
-                        } else {
-                            $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
-                                .trigger('change');
-                        }
+                $prov.on('change', function() {
+                    const provId = $(this).val();
+                    if (provId) {
+                        populateSelect($kab, `/api/v1/location/regencies/${provId}`,
+                            '-- Pilih Kabupaten --');
+                    } else {
+                        $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
+                            .trigger('change');
+                    }
+                    $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
+                        .trigger('change');
+                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                        .trigger('change');
+                });
+
+                $kab.on('change', function() {
+                    const kabId = $(this).val();
+                    if (kabId) {
+                        populateSelect($kec, `/api/v1/location/districts/${kabId}`,
+                            '-- Pilih Kecamatan --');
+                    } else {
                         $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
                             .trigger('change');
-                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                            .trigger('change');
-                    });
-
-                    $kab.on('change', function() {
-                        const kabId = $(this).val();
-                        if (kabId) {
-                            populateSelect($kec, `/api/v1/districts/${kabId}`,
-                                '-- Pilih Kecamatan --');
-                        } else {
-                            $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
-                                .trigger('change');
-                        }
-                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                            .trigger('change');
-                    });
-
-                    $kec.on('change', function() {
-                        const kecId = $(this).val();
-                        if (kecId) {
-                            populateSelect($kel, `/api/v1/villages/${kecId}`,
-                                '-- Pilih Kelurahan --');
-                        } else {
-                            $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
-                                .trigger('change');
-                        }
-                    });
+                    }
+                    $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                        .trigger('change');
                 });
+
+                $kec.on('change', function() {
+                    const kecId = $(this).val();
+                    if (kecId) {
+                        populateSelect($kel, `/api/v1/location/villages/${kecId}`,
+                            '-- Pilih Kelurahan --');
+                    } else {
+                        $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
+                            .trigger('change');
+                    }
+                });
+            });
+        }
+
+        $(document).ready(async function() {
+            const $pengusulGroup = $('.location-group').eq(0);
+            await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/location/provinces',
+                '-- Pilih Provinsi --', @json(old('var_provinsi', $permohonan->var_provinsi ?? '')));
+            if (@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))) {
+                await populateSelect($pengusulGroup.find('.kabupaten'),
+                    `/api/v1/location/regencies/${@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))}`,
+                    '-- Pilih Kabupaten --', @json(old('var_kabupaten', $permohonan->var_kabupaten ?? '')));
+            }
+            if (@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))) {
+                await populateSelect($pengusulGroup.find('.kecamatan'),
+                    `/api/v1/location/districts/${@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))}`,
+                    '-- Pilih Kecamatan --', @json(old('var_kecamatan', $permohonan->var_kecamatan ?? '')));
+            }
+            if (@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))) {
+                await populateSelect($pengusulGroup.find('.kelurahan'),
+                    `/api/v1/location/villages/${@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))}`,
+                    '-- Pilih Kelurahan --', @json(old('var_kelurahan', $permohonan->var_kelurahan ?? '')));
             }
 
-            $(document).ready(async function() {
-                const $pengusulGroup = $('.location-group').eq(0);
-                await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/provinces',
-                    '-- Pilih Provinsi --', @json(old('var_provinsi', $permohonan->var_provinsi ?? '')));
-                if (@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))) {
-                    await populateSelect($pengusulGroup.find('.kabupaten'),
-                        `/api/v1/regencies/${@json(old('var_provinsi', $permohonan->var_provinsi ?? ''))}`,
-                        '-- Pilih Kabupaten --', @json(old('var_kabupaten', $permohonan->var_kabupaten ?? '')));
-                }
-                if (@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))) {
-                    await populateSelect($pengusulGroup.find('.kecamatan'),
-                        `/api/v1/districts/${@json(old('var_kabupaten', $permohonan->var_kabupaten ?? ''))}`,
-                        '-- Pilih Kecamatan --', @json(old('var_kecamatan', $permohonan->var_kecamatan ?? '')));
-                }
-                if (@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))) {
-                    await populateSelect($pengusulGroup.find('.kelurahan'),
-                        `/api/v1/villages/${@json(old('var_kecamatan', $permohonan->var_kecamatan ?? ''))}`,
-                        '-- Pilih Kelurahan --', @json(old('var_kelurahan', $permohonan->var_kelurahan ?? '')));
-                }
+            const $usahaGroup = $('.location-group').eq(1);
+            $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
+            $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
+            await populateSelect($usahaGroup.find('.kecamatan'),
+                `/api/v1/location/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --',
+                @json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? '')));
+            if (@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))) {
+                await populateSelect($usahaGroup.find('.kelurahan'),
+                    `/api/v1/location/villages/${@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))}`,
+                    '-- Pilih Kelurahan --', @json(old('var_kelurahan_usaha', $permohonan->var_kelurahan_usaha ?? '')));
+            }
 
-                const $usahaGroup = $('.location-group').eq(1);
-                $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
-                $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
-                await populateSelect($usahaGroup.find('.kecamatan'),
-                    `/api/v1/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --',
-                    @json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? '')));
-                if (@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))) {
-                    await populateSelect($usahaGroup.find('.kelurahan'),
-                        `/api/v1/villages/${@json(old('var_kecamatan_usaha', $permohonan->var_kecamatan_usaha ?? ''))}`,
-                        '-- Pilih Kelurahan --', @json(old('var_kelurahan_usaha', $permohonan->var_kelurahan_usaha ?? '')));
+            bindLocationChangeEvents();
+        });
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
+    </script>
+    <script>
+        setTimeout(function() {
+            let geojson = {!! json_encode(old('json_geometry', $permohonan->json_geometry ?? '')) !!};
+            if (typeof geojson === 'string' && geojson.length > 0) {
+                try {
+                    geojson = JSON.parse(geojson);
+                } catch (e) {
+                    geojson = null;
                 }
+            }
+            let center = {
+                lat: -8.129955181277511,
+                lng: 113.22306606906642
+            };
+            if (geojson && geojson.geometry) {
+                if (geojson.geometry.type === 'Point') {
+                    center = {
+                        lat: geojson.geometry.coordinates[1],
+                        lng: geojson.geometry.coordinates[0]
+                    };
+                } else if (geojson.geometry.type === 'Polygon' && geojson.geometry.coordinates.length > 0) {
+                    const firstCoord = geojson.geometry.coordinates[0][0];
+                    center = {
+                        lat: firstCoord[1],
+                        lng: firstCoord[0]
+                    };
+                } else if (geojson.geometry.type === 'LineString' && geojson.geometry.coordinates.length > 0) {
+                    const firstCoord = geojson.geometry.coordinates[0];
+                    center = {
+                        lat: firstCoord[1],
+                        lng: firstCoord[0]
+                    };
+                }
+            }
 
-                bindLocationChangeEvents();
+            const map = new google.maps.Map(document.getElementById("map"), {
+                center: center,
+                zoom: 11,
+                mapTypeId: "hybrid",
             });
-        </script>
-        <script src="https://maps.googleapis.com/maps/api/js?key={{ config('app.google_maps_api_key') }}&libraries=drawing">
-        </script>
-        <script>
-            setTimeout(function() {
-                let geojson = {!! json_encode(old('json_geometry', $permohonan->json_geometry ?? '')) !!};
-                if (typeof geojson === 'string' && geojson.length > 0) {
-                    try {
-                        geojson = JSON.parse(geojson);
-                    } catch (e) {
-                        geojson = null;
-                    }
+
+            const drawingManager = new google.maps.drawing.DrawingManager({
+                drawingMode: null,
+                drawingControl: true,
+                drawingControlOptions: {
+                    position: google.maps.ControlPosition.TOP_LEFT,
+                    drawingModes: ["marker", "polyline", "polygon"],
+                },
+                markerOptions: {
+                    draggable: true,
+                },
+                polylineOptions: {
+                    strokeColor: "#DAD155",
+                    strokeOpacity: 1.0,
+                    strokeWeight: 3,
+                    editable: true,
+                },
+                polygonOptions: {
+                    fillColor: "#DAD155",
+                    fillOpacity: 0.5,
+                    strokeWeight: 2,
+                    clickable: true,
+                    editable: true,
+                    zIndex: 1,
+                },
+            });
+
+            drawingManager.setMap(map);
+
+            let currentOverlay = null;
+
+            function clearMap() {
+                if (currentOverlay) {
+                    currentOverlay.setMap(null);
+                    currentOverlay = null;
                 }
-                let center = {
-                    lat: -8.129955181277511,
-                    lng: 113.22306606906642
-                };
-                if (geojson && geojson.geometry) {
-                    if (geojson.geometry.type === 'Point') {
-                        center = {
+                map.data.forEach(feature => map.data.remove(feature));
+                $('#json_geometry').val('');
+            }
+
+            // Render existing geometry if available
+            if (geojson && geojson.geometry) {
+                if (geojson.geometry.type === 'Point') {
+                    currentOverlay = new google.maps.Marker({
+                        position: {
                             lat: geojson.geometry.coordinates[1],
                             lng: geojson.geometry.coordinates[0]
-                        };
-                    } else if (geojson.geometry.type === 'Polygon' && geojson.geometry.coordinates.length > 0) {
-                        const firstCoord = geojson.geometry.coordinates[0][0];
-                        center = {
-                            lat: firstCoord[1],
-                            lng: firstCoord[0]
-                        };
-                    } else if (geojson.geometry.type === 'LineString' && geojson.geometry.coordinates.length > 0) {
-                        const firstCoord = geojson.geometry.coordinates[0];
-                        center = {
-                            lat: firstCoord[1],
-                            lng: firstCoord[0]
-                        };
-                    }
-                }
-
-                const map = new google.maps.Map(document.getElementById("map"), {
-                    center: center,
-                    zoom: 11,
-                    mapTypeId: "hybrid",
-                });
-
-                const drawingManager = new google.maps.drawing.DrawingManager({
-                    drawingMode: null,
-                    drawingControl: true,
-                    drawingControlOptions: {
-                        position: google.maps.ControlPosition.TOP_LEFT,
-                        drawingModes: ["marker", "polyline", "polygon"],
-                    },
-                    markerOptions: {
-                        draggable: true,
-                    },
-                    polylineOptions: {
-                        strokeColor: "#DAD155",
-                        strokeOpacity: 1.0,
-                        strokeWeight: 3,
-                        editable: true,
-                    },
-                    polygonOptions: {
-                        fillColor: "#DAD155",
-                        fillOpacity: 0.5,
-                        strokeWeight: 2,
-                        clickable: true,
-                        editable: true,
-                        zIndex: 1,
-                    },
-                });
-
-                drawingManager.setMap(map);
-
-                let currentOverlay = null;
-
-                function clearMap() {
-                    if (currentOverlay) {
-                        currentOverlay.setMap(null);
-                        currentOverlay = null;
-                    }
-                    map.data.forEach(feature => map.data.remove(feature));
-                    $('#json_geometry').val('');
-                }
-
-                // Render existing geometry if available
-                if (geojson && geojson.geometry) {
-                    if (geojson.geometry.type === 'Point') {
-                        currentOverlay = new google.maps.Marker({
-                            position: {
-                                lat: geojson.geometry.coordinates[1],
-                                lng: geojson.geometry.coordinates[0]
-                            },
-                            map: map,
-                            draggable: true
-                        });
-                        map.setCenter(currentOverlay.getPosition());
-                        map.setZoom(16);
-                        google.maps.event.addListener(currentOverlay, 'dragend', function() {
-                            const pos = currentOverlay.getPosition();
-                            const newGeoJson = {
-                                type: "Feature",
-                                geometry: {
-                                    type: "Point",
-                                    coordinates: [pos.lng(), pos.lat()]
-                                },
-                                properties: {}
-                            };
-                            $('#json_geometry').val(JSON.stringify(newGeoJson));
-                        });
-                    } else if (geojson.geometry.type === 'Polygon') {
-                        const paths = geojson.geometry.coordinates[0].map(c => ({
-                            lat: c[1],
-                            lng: c[0]
-                        }));
-                        currentOverlay = new google.maps.Polygon({
-                            paths: paths,
-                            ...drawingManager.polygonOptions,
-                            map: map,
-                        });
-                        const bounds = new google.maps.LatLngBounds();
-                        currentOverlay.getPath().forEach(p => bounds.extend(p));
-                        map.fitBounds(bounds);
-                        if (map.getZoom() > 18) map.setZoom(18);
-
-                        function updatePolygon() {
-                            const path = currentOverlay.getPath().getArray();
-                            const coordinates = path.map(p => [p.lng(), p.lat()]);
-                            coordinates.push(coordinates[0]);
-                            const newGeoJson = {
-                                type: "Feature",
-                                geometry: {
-                                    type: "Polygon",
-                                    coordinates: [coordinates]
-                                },
-                                properties: {}
-                            };
-                            $('#json_geometry').val(JSON.stringify(newGeoJson));
-                        }
-                        google.maps.event.addListener(currentOverlay.getPath(), 'set_at', updatePolygon);
-                        google.maps.event.addListener(currentOverlay.getPath(), 'insert_at', updatePolygon);
-                        updatePolygon();
-                    } else if (geojson.geometry.type === 'LineString') {
-                        const path = geojson.geometry.coordinates.map(c => ({
-                            lat: c[1],
-                            lng: c[0]
-                        }));
-                        currentOverlay = new google.maps.Polyline({
-                            path: path,
-                            ...drawingManager.polylineOptions,
-                            map: map,
-                        });
-                        const bounds = new google.maps.LatLngBounds();
-                        currentOverlay.getPath().forEach(p => bounds.extend(p));
-                        map.fitBounds(bounds);
-                        if (map.getZoom() > 18) map.setZoom(18);
-
-                        function updatePolyline() {
-                            const path = currentOverlay.getPath().getArray();
-                            const coordinates = path.map(p => [p.lng(), p.lat()]);
-                            const newGeoJson = {
-                                type: "Feature",
-                                geometry: {
-                                    type: "LineString",
-                                    coordinates: coordinates
-                                },
-                                properties: {}
-                            };
-                            $('#json_geometry').val(JSON.stringify(newGeoJson));
-                        }
-                        google.maps.event.addListener(currentOverlay.getPath(), 'set_at', updatePolyline);
-                        google.maps.event.addListener(currentOverlay.getPath(), 'insert_at', updatePolyline);
-                        updatePolyline();
-                    }
-                }
-
-                google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
-                    clearMap();
-                    $('#kml_file').val('');
-
-                    currentOverlay = event.overlay;
-
-                    let geojson = null;
-
-                    if (event.type === "marker") {
-                        const position = event.overlay.getPosition();
-                        geojson = {
+                        },
+                        map: map,
+                        draggable: true
+                    });
+                    map.setCenter(currentOverlay.getPosition());
+                    map.setZoom(16);
+                    google.maps.event.addListener(currentOverlay, 'dragend', function() {
+                        const pos = currentOverlay.getPosition();
+                        const newGeoJson = {
                             type: "Feature",
                             geometry: {
                                 type: "Point",
-                                coordinates: [position.lng(), position.lat()]
+                                coordinates: [pos.lng(), pos.lat()]
                             },
                             properties: {}
                         };
-                    } else if (event.type === "polyline") {
-                        const path = event.overlay.getPath().getArray();
-                        const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                        geojson = {
-                            type: "Feature",
-                            geometry: {
-                                type: "LineString",
-                                coordinates: coordinates
-                            },
-                            properties: {}
-                        };
-                    } else if (event.type === "polygon") {
-                        const path = event.overlay.getPath().getArray();
-                        const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
-                        coordinates.push([path[0].lng(), path[0].lat()]);
-                        geojson = {
+                        $('#json_geometry').val(JSON.stringify(newGeoJson));
+                    });
+                } else if (geojson.geometry.type === 'Polygon') {
+                    const paths = geojson.geometry.coordinates[0].map(c => ({
+                        lat: c[1],
+                        lng: c[0]
+                    }));
+                    currentOverlay = new google.maps.Polygon({
+                        paths: paths,
+                        ...drawingManager.polygonOptions,
+                        map: map,
+                    });
+                    const bounds = new google.maps.LatLngBounds();
+                    currentOverlay.getPath().forEach(p => bounds.extend(p));
+                    map.fitBounds(bounds);
+                    if (map.getZoom() > 18) map.setZoom(18);
+
+                    function updatePolygon() {
+                        const path = currentOverlay.getPath().getArray();
+                        const coordinates = path.map(p => [p.lng(), p.lat()]);
+                        coordinates.push(coordinates[0]);
+                        const newGeoJson = {
                             type: "Feature",
                             geometry: {
                                 type: "Polygon",
@@ -346,69 +273,212 @@
                             },
                             properties: {}
                         };
+                        $('#json_geometry').val(JSON.stringify(newGeoJson));
                     }
+                    google.maps.event.addListener(currentOverlay.getPath(), 'set_at', updatePolygon);
+                    google.maps.event.addListener(currentOverlay.getPath(), 'insert_at', updatePolygon);
+                    updatePolygon();
+                } else if (geojson.geometry.type === 'LineString') {
+                    const path = geojson.geometry.coordinates.map(c => ({
+                        lat: c[1],
+                        lng: c[0]
+                    }));
+                    currentOverlay = new google.maps.Polyline({
+                        path: path,
+                        ...drawingManager.polylineOptions,
+                        map: map,
+                    });
+                    const bounds = new google.maps.LatLngBounds();
+                    currentOverlay.getPath().forEach(p => bounds.extend(p));
+                    map.fitBounds(bounds);
+                    if (map.getZoom() > 18) map.setZoom(18);
 
-                    document.getElementById("json_geometry").value = JSON.stringify(geojson);
+                    function updatePolyline() {
+                        const path = currentOverlay.getPath().getArray();
+                        const coordinates = path.map(p => [p.lng(), p.lat()]);
+                        const newGeoJson = {
+                            type: "Feature",
+                            geometry: {
+                                type: "LineString",
+                                coordinates: coordinates
+                            },
+                            properties: {}
+                        };
+                        $('#json_geometry').val(JSON.stringify(newGeoJson));
+                    }
+                    google.maps.event.addListener(currentOverlay.getPath(), 'set_at', updatePolyline);
+                    google.maps.event.addListener(currentOverlay.getPath(), 'insert_at', updatePolyline);
+                    updatePolyline();
+                }
+            }
 
-                    if (event.type === "marker") {
-                        map.setCenter(event.overlay.getPosition());
-                        map.setZoom(16);
-                    } else {
+            google.maps.event.addListener(drawingManager, "overlaycomplete", function(event) {
+                clearMap();
+                $('#kml_file').val('');
+
+                currentOverlay = event.overlay;
+
+                let geojson = null;
+
+                if (event.type === "marker") {
+                    const position = event.overlay.getPosition();
+                    geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [position.lng(), position.lat()]
+                        },
+                        properties: {}
+                    };
+                } else if (event.type === "polyline") {
+                    const path = event.overlay.getPath().getArray();
+                    const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
+                    geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: "LineString",
+                            coordinates: coordinates
+                        },
+                        properties: {}
+                    };
+                } else if (event.type === "polygon") {
+                    const path = event.overlay.getPath().getArray();
+                    const coordinates = path.map(coord => [coord.lng(), coord.lat()]);
+                    coordinates.push([path[0].lng(), path[0].lat()]);
+                    geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: "Polygon",
+                            coordinates: [coordinates]
+                        },
+                        properties: {}
+                    };
+                }
+
+                document.getElementById("json_geometry").value = JSON.stringify(geojson);
+
+                if (event.type === "marker") {
+                    map.setCenter(event.overlay.getPosition());
+                    map.setZoom(16);
+                } else {
+                    const bounds = new google.maps.LatLngBounds();
+                    if (event.type === "polyline" || event.type === "polygon") {
+                        event.overlay.getPath().forEach(p => bounds.extend(p));
+                        map.fitBounds(bounds);
+                    }
+                }
+            });
+
+            $('#kml_file').on('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const kmlText = event.target.result;
+                    const dom = (new DOMParser()).parseFromString(kmlText, 'text/xml');
+                    const geojson = toGeoJSON.kml(dom);
+
+                    if (geojson && geojson.features && geojson.features.length > 0) {
+                        clearMap();
+
+                        // Ambil feature pertama dan masukkan ke hidden input
+                        const firstFeature = geojson.features[0];
+                        $('#json_geometry').val(JSON.stringify(firstFeature));
+
+                        // Tampilkan semua feature di peta untuk preview
+                        map.data.addGeoJson(geojson);
+
+                        // Zoom ke area KML
                         const bounds = new google.maps.LatLngBounds();
-                        if (event.type === "polyline" || event.type === "polygon") {
-                            event.overlay.getPath().forEach(p => bounds.extend(p));
-                            map.fitBounds(bounds);
-                        }
-                    }
-                });
+                        map.data.forEach(feature => {
+                            feature.getGeometry().forEachLatLng(latlng => bounds.extend(
+                                latlng));
+                        });
+                        map.fitBounds(bounds);
 
-                $('#kml_file').on('change', function(e) {
+                    } else {
+                        alert('Berkas KML tidak valid atau tidak berisi data koordinat.');
+                        $(this).val(''); // Reset input file jika error
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+        }, 500);
+    </script>
+    {{-- @endif --}}
+
+    @if ($type == 'kkpr')
+        <script>
+            $(document).ready(function() {
+                const apiToken = $('meta[name="api-token"]').attr('content');
+
+                $('.attachment-uploader').on('change', function(e) {
+                    const fileInput = $(this);
+                    const targetHiddenInput = $(fileInput.data('target'));
+                    const statusDiv = fileInput.siblings('.upload-status');
                     const file = e.target.files[0];
+
                     if (!file) return;
 
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        const kmlText = event.target.result;
-                        const dom = (new DOMParser()).parseFromString(kmlText, 'text/xml');
-                        const geojson = toGeoJSON.kml(dom);
+                    // Reset status
+                    targetHiddenInput.val('');
+                    statusDiv.html('<span class="text-warning">Mengunggah...</span>');
 
-                        if (geojson && geojson.features && geojson.features.length > 0) {
-                            clearMap();
+                    // Siapkan data untuk dikirim ke API
+                    const formData = new FormData();
+                    formData.append('attachment', file);
 
-                            // Ambil feature pertama dan masukkan ke hidden input
-                            const firstFeature = geojson.features[0];
-                            $('#json_geometry').val(JSON.stringify(firstFeature));
-
-                            // Tampilkan semua feature di peta untuk preview
-                            map.data.addGeoJson(geojson);
-
-                            // Zoom ke area KML
-                            const bounds = new google.maps.LatLngBounds();
-                            map.data.forEach(feature => {
-                                feature.getGeometry().forEachLatLng(latlng => bounds.extend(
-                                    latlng));
-                            });
-                            map.fitBounds(bounds);
-
-                        } else {
-                            alert('Berkas KML tidak valid atau tidak berisi data koordinat.');
-                            $(this).val(''); // Reset input file jika error
-                        }
-                    };
-                    reader.readAsText(file);
+                    // Kirim file ke API pakai Fetch API
+                    fetch('{{ route('api.attachments.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${apiToken}`,
+                                'Accept': 'application/json',
+                            },
+                            body: formData
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                // Tangani error dari server (misal validasi gagal)
+                                return response.json().then(err => {
+                                    throw err;
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                // Jika sukses, isi input hidden dengan path dari API
+                                targetHiddenInput.val(data.path);
+                                // Tampilkan pesan sukses dan nama file
+                                statusDiv.html(
+                                    `<span class="text-success">✓ Berhasil diunggah: ${file.name}</span>`
+                                );
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Upload error:', error);
+                            // Tampilkan pesan error
+                            let errorMessage = 'Gagal mengunggah file. Coba lagi.';
+                            if (error.errors && error.errors.attachment) {
+                                errorMessage = error.errors.attachment[0]; // Ambil pesan error validasi
+                            }
+                            statusDiv.html(`<span class="text-danger">✗ ${errorMessage}</span>`);
+                        });
                 });
-
-            }, 500);
+            });
         </script>
     @endif
 @endsection
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        <x-breadcrumb :items="[
+        {{-- <x-breadcrumb :items="[
             ['text' => 'Permohonan ' . strtoupper($type), 'url' => route('permohonan.index') . '?type=' . $type],
             ['text' => 'Edit Permohonan'],
-        ]" />
+        ]" /> --}}
 
         <form action="{{ route('permohonan.update', $permohonan->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
@@ -452,56 +522,57 @@
                                     @errorFeedback('text_alamat')
                                 </div>
                             </div>
-                            @if ($type == 'sitr/rdtr')
-                                <div class="location-group">
-                                    <div class="mb-4 row">
-                                        <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_provinsi" id="var_provinsi"
-                                                class="form-select  select2 provinsi @error('var_provinsi') is-invalid @enderror">
-                                                <option value="">-- Pilih Provinsi --</option>
-                                            </select>
-                                            @errorFeedback('var_provinsi')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row">
-                                        <label for="var_kabupaten" class="col-sm-3 col-form-label">Kabupaten</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kabupaten" id="var_kabupaten"
-                                                class="form-select select2 kabupaten @error('var_kabupaten') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kabupaten --</option>
-                                            </select>
-                                            @errorFeedback('var_kabupaten')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row">
-                                        <label for="var_kecamatan" class="col-sm-3 col-form-label">Kecamatan</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kecamatan" id="var_kecamatan"
-                                                class="form-select select2 kecamatan @error('var_kecamatan') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kecamatan --</option>
-                                            </select>
-                                            @errorFeedback('var_kecamatan')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row">
-                                        <label for="var_kelurahan" class="col-sm-3 col-form-label">Kelurahan</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kelurahan" id="var_kelurahan"
-                                                class="form-select select2 kelurahan @error('var_kelurahan') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kelurahan --</option>
-                                            </select>
-                                            @errorFeedback('var_kelurahan')
-                                        </div>
+                            {{-- @if ($type == 'sitr/rdtr') --}}
+                            <div class="location-group">
+                                <div class="mb-4 row">
+                                    <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_provinsi" id="var_provinsi"
+                                            class="form-select  select2 provinsi @error('var_provinsi') is-invalid @enderror">
+                                            <option value="">-- Pilih Provinsi --</option>
+                                        </select>
+                                        @errorFeedback('var_provinsi')
                                     </div>
                                 </div>
-                            @endif
+
+                                <div class="mb-4 row">
+                                    <label for="var_kabupaten" class="col-sm-3 col-form-label">Kabupaten</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kabupaten" id="var_kabupaten"
+                                            class="form-select select2 kabupaten @error('var_kabupaten') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kabupaten --</option>
+                                        </select>
+                                        @errorFeedback('var_kabupaten')
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 row">
+                                    <label for="var_kecamatan" class="col-sm-3 col-form-label">Kecamatan</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kecamatan" id="var_kecamatan"
+                                            class="form-select select2 kecamatan @error('var_kecamatan') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kecamatan --</option>
+                                        </select>
+                                        @errorFeedback('var_kecamatan')
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 row">
+                                    <label for="var_kelurahan" class="col-sm-3 col-form-label">Kelurahan</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kelurahan" id="var_kelurahan"
+                                            class="form-select select2 kelurahan @error('var_kelurahan') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kelurahan --</option>
+                                        </select>
+                                        @errorFeedback('var_kelurahan')
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- @endif --}}
+
                             <div class="mb-4 row">
                                 <label for="var_email" class="col-sm-3 col-form-label">Email</label>
                                 <div class="col-sm-9">
@@ -591,6 +662,30 @@
                                     @errorFeedback('text_alamat_usaha')
                                 </div>
                             </div>
+                            @if ($type == 'kkpr')
+                                <div class="mb-4 row">
+                                    <label for="var_npwp_pemohon_atau_badan_usaha" class="col-sm-3 col-form-label">NPWP
+                                        Pemohon/Badan Usaha</label>
+                                    <div class="col-12">
+                                        <input type="text" name="var_npwp_pemohon_atau_badan_usaha"
+                                            id="var_npwp_pemohon_atau_badan_usaha"
+                                            class="form-control  @error('var_npwp_pemohon_atau_badan_usaha') is-invalid @enderror"
+                                            value="{{ old('var_npwp_pemohon_atau_badan_usaha', $permohonan->var_npwp_pemohon_atau_badan_usaha ?? '') }}"
+                                            required>
+                                        @errorFeedback('var_npwp_pemohon_atau_badan_usaha')
+                                    </div>
+                                </div>
+                                <div class="mb-4 row">
+                                    <label for="var_jenis_kegiatan" class="col-sm-3 col-form-label">Jenis Kegiatan</label>
+                                    <div class="col-12">
+                                        <input type="text" name="var_jenis_kegiatan" id="var_jenis_kegiatan"
+                                            class="form-control  @error('var_jenis_kegiatan') is-invalid @enderror"
+                                            value="{{ old('var_jenis_kegiatan', $permohonan->var_jenis_kegiatan ?? '') }}"
+                                            required>
+                                        @errorFeedback('var_jenis_kegiatan')
+                                    </div>
+                                </div>
+                            @endif
                             @if ($type == 'sitr/rdtr')
                                 <div class="location-group">
                                     <div class="mb-4 row d-none">
@@ -779,6 +874,157 @@
                         </div>
                     </div>
                 </div>
+                @if ($type == 'kkpr')
+                    <div class="col-12 mt-4">
+                        <div class="card">
+                            <h5 class="card-header border-bottom mb-3">Lampiran</h5>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="file_ktp" class="form-label">Fotocopy KTP</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_ktp"
+                                        data-target="#var_fotocopy_ktp_attachment">
+                                    <input type="hidden" name="var_fotocopy_ktp_attachment"
+                                        id="var_fotocopy_ktp_attachment"
+                                        value="{{ old('var_fotocopy_ktp_attachment', $permohonan->var_fotocopy_ktp_attachment ?? '') }}">
+                                    @if ($permohonan->var_fotocopy_ktp_attachment)
+                                        <a href="{{ $permohonan->var_fotocopy_ktp_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_fotocopy_ktp_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_npwp" class="form-label">Fotocopy NPWP</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_npwp"
+                                        data-target="#var_fotocopy_npwp_attachment">
+                                    <input type="hidden" name="var_fotocopy_npwp_attachment"
+                                        id="var_fotocopy_npwp_attachment"
+                                        value="{{ old('var_fotocopy_npwp_attachment', $permohonan->var_fotocopy_npwp_attachment ?? '') }}">
+                                    @if ($permohonan->var_fotocopy_npwp_attachment)
+                                        <a href="{{ $permohonan->var_fotocopy_npwp_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_fotocopy_npwp_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_foto_lokasi" class="form-label">Foto Lokasi Rencana Kegiatan</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_foto_lokasi"
+                                        data-target="#var_foto_lokasi_rencana_kegiatan_attachment">
+                                    <input type="hidden" name="var_foto_lokasi_rencana_kegiatan_attachment"
+                                        id="var_foto_lokasi_rencana_kegiatan_attachment"
+                                        value="{{ old('var_foto_lokasi_rencana_kegiatan_attachment', $permohonan->var_foto_lokasi_rencana_kegiatan_attachment ?? '') }}">
+                                    @if ($permohonan->var_foto_lokasi_rencana_kegiatan_attachment)
+                                        <a href="{{ $permohonan->var_foto_lokasi_rencana_kegiatan_attachment }}"
+                                            class="" target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_foto_lokasi_rencana_kegiatan_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_titik_koordinat" class="form-label">Titik Koordinat</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_titik_koordinat" data-target="#var_titik_koordinat_attachment">
+                                    <input type="hidden" name="var_titik_koordinat_attachment"
+                                        id="var_titik_koordinat_attachment"
+                                        value="{{ old('var_titik_koordinat_attachment', $permohonan->var_titik_koordinat_attachment ?? '') }}">
+                                    @if ($permohonan->var_titik_koordinat_attachment)
+                                        <a href="{{ $permohonan->var_titik_koordinat_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_titik_koordinat_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_sitr" class="form-label">SITR</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_sitr"
+                                        data-target="#var_sitr_attachment">
+                                    <input type="hidden" name="var_sitr_attachment" id="var_sitr_attachment"
+                                        value="{{ old('var_sitr_attachment', $permohonan->var_sitr_attachment ?? '') }}">
+                                    @if ($permohonan->var_sitr_attachment)
+                                        <a href="{{ $permohonan->var_sitr_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_sitr_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_lp2b" class="form-label">LP2B</label>
+                                    <input class="form-control attachment-uploader" type="file" id="file_lp2b"
+                                        data-target="#var_lp2b_attachment">
+                                    <input type="hidden" name="var_lp2b_attachment" id="var_lp2b_attachment"
+                                        value="{{ old('var_lp2b_attachment', $permohonan->var_lp2b_attachment ?? '') }}">
+                                    @if ($permohonan->var_lp2b_attachment)
+                                        <a href="{{ $permohonan->var_lp2b_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_lp2b_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_bukti_penguasaan_tanah" class="form-label">Bukti Penguasaan
+                                        Tanah</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_bukti_penguasaan_tanah"
+                                        data-target="#var_bukti_penguasaan_tanah_attachment">
+                                    <input type="hidden" name="var_bukti_penguasaan_tanah_attachment"
+                                        id="var_bukti_penguasaan_tanah_attachment"
+                                        value="{{ old('var_bukti_penguasaan_tanah_attachment', $permohonan->var_bukti_penguasaan_tanah_attachment ?? '') }}">
+                                    @if ($permohonan->var_bukti_penguasaan_tanah_attachment)
+                                        <a href="{{ $permohonan->var_bukti_penguasaan_tanah_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_bukti_penguasaan_tanah_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_rencana_teknis_bangunan" class="form-label">Rencana Teknis
+                                        Bangunan</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_rencana_teknis_bangunan"
+                                        data-target="#var_rencana_teknis_bangunan_attachment">
+                                    <input type="hidden" name="var_rencana_teknis_bangunan_attachment"
+                                        id="var_rencana_teknis_bangunan_attachment"
+                                        value="{{ old('var_rencana_teknis_bangunan_attachment', $permohonan->var_rencana_teknis_bangunan_attachment ?? '') }}">
+                                    @if ($permohonan->var_rencana_teknis_bangunan_attachment)
+                                        <a href="{{ $permohonan->var_rencana_teknis_bangunan_attachment }}"
+                                            class="" target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_rencana_teknis_bangunan_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_ptp_kkpr_nonberusaha" class="form-label">PTP KKPR Nonberusaha</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_ptp_kkpr_nonberusaha" data-target="#var_ptp_kkpr_nonberusaha_attachment">
+                                    <input type="hidden" name="var_ptp_kkpr_nonberusaha_attachment"
+                                        id="var_ptp_kkpr_nonberusaha_attachment"
+                                        value="{{ old('var_ptp_kkpr_nonberusaha_attachment', $permohonan->var_ptp_kkpr_nonberusaha_attachment ?? '') }}">
+                                    @if ($permohonan->var_ptp_kkpr_nonberusaha_attachment)
+                                        <a href="{{ $permohonan->var_ptp_kkpr_nonberusaha_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_ptp_kkpr_nonberusaha_attachment')
+                                </div>
+                                <div class="mb-3">
+                                    <label for="file_akta_pendirian_badan" class="form-label">Akta Pendirian Badan</label>
+                                    <input class="form-control attachment-uploader" type="file"
+                                        id="file_akta_pendirian_badan" data-target="#var_akta_pendirian_badan_attachment">
+                                    <input type="hidden" name="var_akta_pendirian_badan_attachment"
+                                        id="var_akta_pendirian_badan_attachment"
+                                        value="{{ old('var_akta_pendirian_badan_attachment', $permohonan->var_akta_pendirian_badan_attachment ?? '') }}">
+                                    @if ($permohonan->var_akta_pendirian_badan_attachment)
+                                        <a href="{{ $permohonan->var_akta_pendirian_badan_attachment }}" class=""
+                                            target="_blank">Lihat Lampiran</a>
+                                    @endif
+                                    <div class="upload-status small mt-1"></div>
+                                    @errorFeedback('var_akta_pendirian_badan_attachment')
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="col-12 mt-4">
                     <button type="submit" class="btn btn-success">Simpan</button>

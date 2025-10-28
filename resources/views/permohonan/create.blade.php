@@ -58,12 +58,14 @@
         async function populateSelect($select, url, placeholder, selectedValue = null) {
             $select.html('<option value="">Memuat...</option>').prop('disabled', true);
             try {
-                const data = await $.getJSON(url);
+                const res = await $.getJSON(url);
+                // Correction: API response is {success: true, data: [...], message: ""}
                 let options = `<option value="">${placeholder}</option>`;
-                data.forEach(item => {
-                    options += `<option value="${item.id}">${item.nama}</option>`;
-                });
-
+                if (res && res.data && Array.isArray(res.data)) {
+                    res.data.forEach(item => {
+                        options += `<option value="${item.id}">${item.nama}</option>`;
+                    });
+                }
                 reloadSelect2($select, options, placeholder);
 
                 if (selectedValue) {
@@ -91,7 +93,7 @@
                 $prov.on('change', function() {
                     const provId = $(this).val();
                     if (provId) {
-                        populateSelect($kab, `/api/v1/regencies/${provId}`,
+                        populateSelect($kab, `/api/v1/location/regencies/${provId}`,
                             '-- Pilih Kabupaten --');
                     } else {
                         $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
@@ -106,7 +108,7 @@
                 $kab.on('change', function() {
                     const kabId = $(this).val();
                     if (kabId) {
-                        populateSelect($kec, `/api/v1/districts/${kabId}`,
+                        populateSelect($kec, `/api/v1/location/districts/${kabId}`,
                             '-- Pilih Kecamatan --');
                     } else {
                         $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
@@ -119,7 +121,7 @@
                 $kec.on('change', function() {
                     const kecId = $(this).val();
                     if (kecId) {
-                        populateSelect($kel, `/api/v1/villages/${kecId}`,
+                        populateSelect($kel, `/api/v1/location/villages/${kecId}`,
                             '-- Pilih Kelurahan --');
                     } else {
                         $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
@@ -132,14 +134,14 @@
 
         $(document).ready(async function() {
             const $pengusulGroup = $('.location-group').eq(0);
-            await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/provinces',
+            await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/location/provinces',
                 '-- Pilih Provinsi --');
 
             const $usahaGroup = $('.location-group').eq(1);
             $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
             $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
             await populateSelect($usahaGroup.find('.kecamatan'),
-                `/api/v1/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --');
+                `/api/v1/location/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --');
 
             bindLocationChangeEvents();
         });
@@ -494,7 +496,7 @@
                         <div class="card-body">
 
                             <div class="mb-4 row">
-                                <label for="var_nama_usaha" class="col-sm-3 col-form-label">Nama Usaha</label>
+                                <label for="var_nama_usaha" class="col-sm-3 col-form-label">Nama Badan</label>
                                 <div class="col-sm-9">
                                     <input type="text" name="var_nama_usaha" id="var_nama_usaha"
                                         class="form-control  @error('var_nama_usaha') is-invalid @enderror"
@@ -504,7 +506,7 @@
                             </div>
                             @if ($type == 'sitr/rdtr')
                                 <div class="mb-4 row">
-                                    <label for="var_bentuk_usaha" class="col-sm-3 col-form-label">Bentuk Usaha</label>
+                                    <label for="var_bentuk_usaha" class="col-sm-3 col-form-label">Bentuk Badan</label>
                                     <div class="col-sm-9">
                                         <select name="var_bentuk_usaha" id="var_bentuk_usaha"
                                             class="form-select select2 @error('var_bentuk_usaha') is-invalid @enderror"
@@ -534,7 +536,7 @@
                                 </div>
                             @endif
                             <div class="mb-4 row">
-                                <label for="text_alamat_usaha" class="col-sm-3 col-form-label">Alamat Usaha</label>
+                                <label for="text_alamat_usaha" class="col-sm-3 col-form-label">Alamat yang dimohon</label>
                                 <div class="col-sm-9">
                                     <textarea name="text_alamat_usaha" id="text_alamat_usaha"
                                         class="form-control  @error('text_alamat_usaha') is-invalid @enderror" rows="3" required>{{ old('text_alamat_usaha') }}</textarea>
@@ -611,7 +613,7 @@
                                     </div>
                                 </div>
                                 <div class="mb-4 row">
-                                    <label for="var_rencana_usaha" class="col-sm-3 col-form-label">Rencana Usaha</label>
+                                    <label for="var_rencana_usaha" class="col-sm-3 col-form-label">Rencana Kegiatan</label>
                                     <div class="col-sm-9">
                                         <textarea name="var_rencana_usaha" id="var_rencana_usaha"
                                             class="form-control  @error('var_rencana_usaha') is-invalid @enderror" required>{{ old('var_rencana_usaha') }}</textarea>
@@ -620,8 +622,7 @@
                                 </div>
 
                                 <div class="mb-4 row">
-                                    <label for="dec_rencana_luas_lantai" class="col-sm-3 col-form-label">Rencana Luas
-                                        Lantai</label>
+                                    <label for="dec_rencana_luas_lantai" class="col-sm-3 col-form-label">Rencana luas lahan yang dimohon (m2)</label>
                                     <div class="col-sm-9">
                                         <input type="number" name="dec_rencana_luas_lantai" id="dec_rencana_luas_lantai"
                                             class="form-control  @error('dec_rencana_luas_lantai') is-invalid @enderror"
@@ -634,7 +635,7 @@
                     </div>
                 </div>
 
-                @if ($type == 'sitr/rdtr')
+                {{-- @if ($type == 'sitr/rdtr') --}}
                     <div class="col-12 mt-4">
                         <div class="card">
                             <h5 class="card-header border-bottom mb-3">Peta Lokasi</h5>
@@ -651,7 +652,7 @@
                             </div>
                         </div>
                     </div>
-                @endif
+                {{-- @endif --}}
                 <div class="col-12 mt-4">
                     <div class="card">
                         <h5 class="card-header border-bottom mb-3">Administrasi</h5>

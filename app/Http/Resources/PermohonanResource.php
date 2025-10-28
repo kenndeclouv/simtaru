@@ -42,20 +42,19 @@ class PermohonanResource extends JsonResource
                 'var_npwp_pemohon_atau_badan_usaha' => $this->whenNotNull($this->var_npwp_pemohon_atau_badan_usaha),
                 'var_jenis_kegiatan' => $this->whenNotNull($this->var_jenis_kegiatan),
             ],
-            // GABUNGKAN DATA LOKASI & GEOMETRI HANYA JIKA TIPE-NYA sitr/rdtr
-            $this->mergeWhen($this->var_type === 'sitr/rdtr', [
-                'lokasi_pemohon' => [
-                    'provinsi' => $this->when($this->var_provinsi, fn() => ['id' => $this->var_provinsi, 'nama' => $this->nama_provinsi]),
-                    'kabupaten' => $this->when($this->var_kabupaten, fn() => ['id' => $this->var_kabupaten, 'nama' => $this->nama_kabupaten]),
-                    'kecamatan' => $this->when($this->var_kecamatan, fn() => ['id' => $this->var_kecamatan, 'nama' => $this->nama_kecamatan]),
-                    'kelurahan' => $this->when($this->var_kelurahan, fn() => ['id' => $this->var_kelurahan, 'nama' => $this->nama_kelurahan]),
-                ],
-                'lokasi_usaha' => [
-                    'kecamatan' => $this->when($this->var_kecamatan_usaha, fn() => ['id' => $this->var_kecamatan_usaha, 'nama' => $this->nama_kecamatan_usaha]),
-                    'kelurahan' => $this->when($this->var_kelurahan_usaha, fn() => ['id' => $this->var_kelurahan_usaha, 'nama' => $this->nama_kelurahan_usaha]),
-                ],
-                'geometri' => $this->whenNotNull(json_decode($this->json_geometry)),
-            ]),
+
+            'lokasi_pemohon' => [
+                'provinsi' => $this->when($this->var_provinsi, fn() => ['id' => $this->var_provinsi, 'nama' => $this->nama_provinsi]),
+                'kabupaten' => $this->when($this->var_kabupaten, fn() => ['id' => $this->var_kabupaten, 'nama' => $this->nama_kabupaten]),
+                'kecamatan' => $this->when($this->var_kecamatan, fn() => ['id' => $this->var_kecamatan, 'nama' => $this->nama_kecamatan]),
+                'kelurahan' => $this->when($this->var_kelurahan, fn() => ['id' => $this->var_kelurahan, 'nama' => $this->nama_kelurahan]),
+            ],
+            'lokasi_usaha' => [
+                'kecamatan' => $this->when($this->var_kecamatan_usaha, fn() => ['id' => $this->var_kecamatan_usaha, 'nama' => $this->nama_kecamatan_usaha]),
+                'kelurahan' => $this->when($this->var_kelurahan_usaha, fn() => ['id' => $this->var_kelurahan_usaha, 'nama' => $this->nama_kelurahan_usaha]),
+            ],
+            'geometri' => $this->whenNotNull(json_decode($this->json_geometry)),
+
             'template_dokumen' => TemplateDocResource::collection($this->whenLoaded('templateDocs')),
             'attachment' => [
                 'fotocopy_ktp' => $this->whenNotNull($this->var_fotocopy_ktp_attachment),

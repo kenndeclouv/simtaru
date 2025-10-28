@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
 
         $superadmin = User::create([
             'name' => 'superadmin',
-            'email' => 'zuuliziluuz@gmail.com',
+            'email' => 'super@admin.com',
             'password' => 'superadmin',
         ]);
 

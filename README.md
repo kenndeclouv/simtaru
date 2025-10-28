@@ -59,3 +59,13 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+            'var_fotocopy_ktp_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_fotocopy_npwp_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_foto_lokasi_rencana_kegiatan_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_titik_koordinat_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_sitr_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_lp2b_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_bukti_penguasaan_tanah_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_rencana_teknis_bangunan_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_ptp_kkpr_nonberusaha_attachment': 'https://simtaru.kohdi.id/storage/' ,
+            'var_akta_pendirian_badan_attachment': 'https://simtaru.kohdi.id/storage/' ,

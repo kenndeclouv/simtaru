@@ -7,8 +7,10 @@ use App\Models\KeyStorage;
 use App\Models\Permohonan;
 use App\Models\PermohonanTemplateDoc;
 use App\Models\TemplateDocs;
+use Exception;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 trait ManagesPermohonan
@@ -166,5 +168,95 @@ trait ManagesPermohonan
         }
         $permohonan->delete();
         return response()->json(['message' => 'Permohonan berhasil dihapus.'], Response::HTTP_OK);
+    }
+
+    /**
+     * Generate document(s) for the given permohonan.
+     *
+     * @param  Permohonan  $permohonan
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function generateDocuments(Permohonan $permohonan)
+    {
+        if ($permohonan->var_type !== $this->permohonanType) {
+            return response()->json(['message' => 'Data tidak ditemukan.'], 404);
+        }
+
+        $templates = $permohonan->templateDocs;
+
+        // 1. SIAPKAN DATA SIMPEL
+        $replacementData = $permohonan->getAttributes();
+
+        $replacementData['var_provinsi']        = $permohonan->nama_provinsi;
+        $replacementData['var_kabupaten']       = $permohonan->nama_kabupaten;
+        $replacementData['var_kecamatan']       = $permohonan->nama_kecamatan;
+        $replacementData['var_kelurahan']       = $permohonan->nama_kelurahan;
+        $replacementData['var_kecamatan_usaha'] = $permohonan->nama_kecamatan_usaha;
+        $replacementData['var_kelurahan_usaha'] = $permohonan->nama_kelurahan_usaha;
+        unset($replacementData['json_geometry']);
+
+        // 2. SIAPKAN DATA TABEL KOORDINAT
+        $koordinatList = $permohonan->koordinat ?? [];
+        $tableValues = [];
+        if (!empty($koordinatList)) {
+            foreach ($koordinatList as $index => $koor) {
+                $tableValues[] = [
+                    'koor_no'  => $index + 1,
+                    'koor_lng' => $koor[0] ?? 'N/A',
+                    'koor_lat' => $koor[1] ?? 'N/A',
+                ];
+            }
+        } else {
+            $tableValues[] = ['koor_no' => 'N/A', 'koor_lng' => 'N/A', 'koor_lat' => 'N/A'];
+        }
+
+        $generatedFiles = [];
+        foreach ($templates as $template) {
+            try {
+                $templatePath = Storage::disk('public')->path($template->var_file_path);
+
+                if (!file_exists($templatePath)) {
+                    Log::error("File template tidak ditemukan: {$templatePath}");
+                    continue;
+                }
+
+                $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+
+                // 3. PROSES DATA SIMPEL (PAKAI setValues)
+                $templateProcessor->setValues($replacementData);
+
+                // 4. PROSES DATA TABEL (PAKAI cloneRowAndSetValues)
+                $templateProcessor->cloneRowAndSetValues('koor_no', $tableValues);
+
+                // 5. SIMPAN FILE
+                $generatedDir = "generated_documents/{$permohonan->id}";
+                $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.docx';
+                $newFilePath = "{$generatedDir}/{$newFileName}";
+                $tempFile = tempnam(sys_get_temp_dir(), 'phpword');
+                $templateProcessor->saveAs($tempFile);
+                Storage::disk('public')->put($newFilePath, file_get_contents($tempFile));
+                unlink($tempFile);
+
+                $permohonan->templateDocs()->updateExistingPivot($template->id, [
+                    'var_generated_file_path' => $newFilePath
+                ]);
+
+                $generatedFiles[] = [
+                    'template_id' => $template->id,
+                    'file_name'   => $newFileName,
+                    'file_url'    => asset('storage/' . $newFilePath),
+                ];
+            } catch (Exception $e) {
+                Log::error('Gagal generate dokumen: ' . $e->getMessage());
+                return response()->json([
+                    'message' => 'Gagal generate: ' . $template->var_nama . ' - ' . $e->getMessage(),
+                ], 500);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Semua dokumen berhasil di-generate!',
+            'generated_files' => $generatedFiles,
+        ], 200);
     }
 }

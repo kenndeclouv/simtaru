@@ -18,11 +18,13 @@ class TemplateDocResource extends JsonResource
         return [
             'id' => $this->id,
             'nama_dokumen' => $this->var_nama,
-            'path_template' => $this->var_file_path ? Storage::disk('public')->path($this->var_file_path) : null,
+            'path_template' => $this->var_file_path
+                ? asset('storage/' . ltrim($this->var_file_path, '/'))
+                : null,
 
             'path_hasil_generate' => $this->whenPivotLoaded('permohonans_template_docs', function () {
                 return $this->pivot->var_generated_file_path
-                    ? Storage::disk('public')->path($this->pivot->var_generated_file_path)
+                    ? asset('storage/' . ltrim($this->pivot->var_generated_file_path, '/'))
                     : null;
             }),
 

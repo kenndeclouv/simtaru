@@ -26,7 +26,7 @@
 </head>
 
 
-<body>
+<body class="overflow-x-hidden">
     @include('components.alert')
     {{-- <div class="loader">
         <div class="sk-fold sk-primary d-none d-lg-block m-2" style="width: 80px; height:80px">

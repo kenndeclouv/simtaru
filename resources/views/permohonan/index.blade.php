@@ -7,7 +7,8 @@
             let type = new URLSearchParams(window.location.search).get('type');
             console.log(type);
             $('.select2').select2({
-                dropdownParent: '#statusModal'
+                dropdownParent: '#statusModal',
+                placeholder: "Pilih"
             });
             let a = document.querySelector(".dt-scrollableTable");
             a && new DataTable(a, {
@@ -227,7 +228,6 @@
         </div>
     </div>
 
-    {{-- modal status --}}
     <div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -242,8 +242,8 @@
                         <div class="mb-3">
                             <label for="status" class="form-label">Status</label>
                             <select name="status" id="status" class="form-select select2">
-                                <option value="approved">Selesai</option>
-                                <option value="pending">Diproses</option>
+                                <option value="" select>Pilih Status</option>
+                                <option value="approved">Verifikasi</option>
                                 <option value="rejected">Ditolak</option>
                             </select>
                         </div>

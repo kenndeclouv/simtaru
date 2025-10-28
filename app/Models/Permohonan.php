@@ -36,142 +36,208 @@ class Permohonan extends Model
     // Location relationships
     public function province(): BelongsTo
     {
-        return $this->belongsTo(Province::class, 'var_provinsi', 'id');
+        return $this
+            ->belongsTo(Province::class, 'var_provinsi', 'id')
+            ->withDefault(function ($province, $permohonan) {
+                $province->name = $permohonan->var_provinsi;
+            });
     }
 
     public function regency(): BelongsTo
     {
-        return $this->belongsTo(Regency::class, 'var_kabupaten', 'id');
+        return $this
+            ->belongsTo(Regency::class, 'var_kabupaten', 'id')
+            ->withDefault(function ($regency, $permohonan) {
+                $regency->name = $permohonan->var_kabupaten;
+            });
     }
 
     public function district(): BelongsTo
     {
-        return $this->belongsTo(District::class, 'var_kecamatan', 'id');
+        return $this
+            ->belongsTo(District::class, 'var_kecamatan', 'id')
+            ->withDefault(function ($district, $permohonan) {
+                $district->name = $permohonan->var_kecamatan;
+            });
     }
 
     public function village(): BelongsTo
     {
-        return $this->belongsTo(Village::class, 'var_kelurahan', 'id');
+        return $this
+            ->belongsTo(Village::class, 'var_kelurahan', 'id')
+            ->withDefault(function ($village, $permohonan) {
+                $village->name = $permohonan->var_kelurahan;
+            });
     }
 
     public function districtUsaha(): BelongsTo
     {
-        return $this->belongsTo(District::class, 'var_kecamatan_usaha', 'id');
+        return $this
+            ->belongsTo(District::class, 'var_kecamatan_usaha', 'id')
+            ->withDefault(function ($district, $permohonan) {
+                $district->name = $permohonan->var_kecamatan_usaha;
+            });
     }
 
     public function villageUsaha(): BelongsTo
     {
-        return $this->belongsTo(Village::class, 'var_kelurahan_usaha', 'id');
+        return $this
+            ->belongsTo(Village::class, 'var_kelurahan_usaha', 'id')
+            ->withDefault(function ($village, $permohonan) {
+                $village->name = $permohonan->var_kelurahan_usaha;
+            });
     }
 
     // Accessor methods for backward compatibility
     public function getNamaProvinsiAttribute()
     {
-        return $this->province?->name ?? $this->var_provinsi;
+        return $this->province->name;  // Langsung aja!
     }
 
     public function getNamaKabupatenAttribute()
     {
-        return $this->regency?->name ?? $this->var_kabupaten;
+        return $this->regency->name;
     }
 
     public function getNamaKecamatanAttribute()
     {
-        return $this->district?->name ?? $this->var_kecamatan;
+        return $this->district->name;
     }
 
     public function getNamaKelurahanAttribute()
     {
-        return $this->village?->name ?? $this->var_kelurahan;
+        return $this->village->name;
     }
 
     public function getNamaKecamatanUsahaAttribute()
     {
-        return $this->districtUsaha?->name ?? $this->var_kecamatan_usaha;
+        return $this->districtUsaha->name;
     }
 
     public function getNamaKelurahanUsahaAttribute()
     {
-        return $this->villageUsaha?->name ?? $this->var_kelurahan_usaha;
+        return $this->villageUsaha->name;
+    }
+
+    protected function generateAttachmentUrl($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        if (str_starts_with($value, 'http')) {
+            return $value;
+        }
+        return asset('storage/' . $value);
     }
 
     public function getVarFotocopyKtpAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_fotocopy_ktp_attachment'])) {
-            return asset('storage/' . $this->attributes['var_fotocopy_ktp_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_fotocopy_ktp_attachment'] ?? null);
     }
 
     public function getVarFotocopyNpwpAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_fotocopy_npwp_attachment'])) {
-            return asset('storage/' . $this->attributes['var_fotocopy_npwp_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_fotocopy_npwp_attachment'] ?? null);
     }
 
     public function getVarFotoLokasiRencanaKegiatanAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_foto_lokasi_rencana_kegiatan_attachment'])) {
-            return asset('storage/' . $this->attributes['var_foto_lokasi_rencana_kegiatan_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_foto_lokasi_rencana_kegiatan_attachment'] ?? null);
     }
 
     public function getVarTitikKoordinatAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_titik_koordinat_attachment'])) {
-            return asset('storage/' . $this->attributes['var_titik_koordinat_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_titik_koordinat_attachment'] ?? null);
     }
 
     public function getVarSitrAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_sitr_attachment'])) {
-            return asset('storage/' . $this->attributes['var_sitr_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_sitr_attachment'] ?? null);
     }
 
     public function getVarLp2bAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_lp2b_attachment'])) {
-            return asset('storage/' . $this->attributes['var_lp2b_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_lp2b_attachment'] ?? null);
     }
 
     public function getVarBuktiPenguasaanTanahAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_bukti_penguasaan_tanah_attachment'])) {
-            return asset('storage/' . $this->attributes['var_bukti_penguasaan_tanah_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_bukti_penguasaan_tanah_attachment'] ?? null);
     }
 
     public function getVarRencanaTeknisBangunanAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_rencana_teknis_bangunan_attachment'])) {
-            return asset('storage/' . $this->attributes['var_rencana_teknis_bangunan_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_rencana_teknis_bangunan_attachment'] ?? null);
     }
 
     public function getVarPtpKkprNonberusahaAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_ptp_kkpr_nonberusaha_attachment'])) {
-            return asset('storage/' . $this->attributes['var_ptp_kkpr_nonberusaha_attachment']);
-        }
-        return null;
+        return $this->generateAttachmentUrl($this->attributes['var_ptp_kkpr_nonberusaha_attachment'] ?? null);
     }
 
     public function getVarAktaPendirianBadanAttachmentAttribute()
     {
-        if (!empty($this->attributes['var_akta_pendirian_badan_attachment'])) {
-            return asset('storage/' . $this->attributes['var_akta_pendirian_badan_attachment']);
+        return $this->generateAttachmentUrl($this->attributes['var_akta_pendirian_badan_attachment'] ?? null);
+    }
+
+    public function getKoordinatAttribute(): array
+    {
+        // Kalo datanya kosong, balikin array kosong
+        if (empty($this->json_geometry)) {
+            return [];
         }
-        return null;
+
+        try {
+            // Decode string JSON jadi object PHP
+            $data = json_decode($this->json_geometry);
+
+            if (!$data) {
+                return [];
+            }
+
+            $coordinates = [];
+            $geometry = null;
+
+            // Cek 1: Apakah ini FeatureCollection
+            if (isset($data->type) && $data->type === 'FeatureCollection' && isset($data->features[0])) {
+                $geometry = $data->features[0]->geometry ?? null;
+            }
+            // Cek 2: Apakah ini satu Feature (KASUSMU YANG INI)
+            else if (isset($data->type) && $data->type === 'Feature' && isset($data->geometry)) {
+                $geometry = $data->geometry;
+            }
+            // Cek 3: Apakah ini data geometri langsung
+            else if (isset($data->type) && ($data->type === 'Polygon' || $data->type === 'LineString' || $data->type === 'Point')) {
+                $geometry = $data;
+            }
+
+            // --- Ekstrak koordinat dari geometri yang ditemukan ---
+
+            // Kalo tipenya Polygon
+            if ($geometry && isset($geometry->type) && $geometry->type === 'Polygon' && isset($geometry->coordinates[0])) {
+                // $geometry->coordinates[0] adalah array berisi [lng, lat], [lng, lat], ...
+                $coordinates = $geometry->coordinates[0];
+            }
+            // ==========================================================
+            // INI BLOK BARUNYA UNTUK LineString
+            // ==========================================================
+            else if ($geometry && isset($geometry->type) && $geometry->type === 'LineString' && isset($geometry->coordinates)) {
+                // $geometry->coordinates adalah array berisi [lng, lat], [lng, lat], ...
+                $coordinates = $geometry->coordinates;  // <- Perhatiin, gak pakai [0]
+            }
+            // ==========================================================
+            // Kalo tipenya Point (satu titik aja)
+            else if ($geometry && isset($geometry->type) && $geometry->type === 'Point' && isset($geometry->coordinates)) {
+                // $geometry->coordinates adalah [lng, lat]
+                $coordinates = [$geometry->coordinates];  // Kita bungkus array biar konsisten
+            }
+
+            // Pastikan hasilnya array
+            return is_array($coordinates) ? $coordinates : [];
+        } catch (\Exception $e) {
+            // Log error kalo JSON-nya aneh / gak valid
+            Log::error('Gagal parse json_geometry (ID: {$this->id}): ' . $e->getMessage());
+            return [];
+        }
     }
 }

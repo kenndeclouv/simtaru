@@ -239,6 +239,11 @@ class PermohonanController extends Controller
             'text_catatan' => $request->catatan,
             'var_lampiran' => $lampiranName,
         ]);
+
+        if ($request->status === 'approved') {
+            $this->generateDocuments($permohonan);
+        }
+
         return redirect()->back()->with('success', 'Status permohonan berhasil diubah.');
     }
 
@@ -246,7 +251,9 @@ class PermohonanController extends Controller
     {
         $templates = $permohonan->templateDocs;
 
-        $replacementData = $permohonan->toArray();
+        // 1. SIAPKAN DATA SIMPEL
+        // $replacementData = $permohonan->toArray();
+        $replacementData = $permohonan->getAttributes();
 
         $replacementData['var_provinsi'] = $permohonan->nama_provinsi;
         $replacementData['var_kabupaten'] = $permohonan->nama_kabupaten;
@@ -254,6 +261,24 @@ class PermohonanController extends Controller
         $replacementData['var_kelurahan'] = $permohonan->nama_kelurahan;
         $replacementData['var_kecamatan_usaha'] = $permohonan->nama_kecamatan_usaha;
         $replacementData['var_kelurahan_usaha'] = $permohonan->nama_kelurahan_usaha;
+        // Hapus 'json_geometry' dari data simpel biar nggak ke-print mentah
+        unset($replacementData['json_geometry']);
+
+        // 2. SIAPKAN DATA TABEL KOORDINAT
+        $koordinatList = $permohonan->koordinat; // Ini hasilnya [[lng, lat], [lng, lat], ...]
+
+        $tableValues = [];
+        if (!empty($koordinatList)) {
+            foreach ($koordinatList as $index => $koor) {
+                $tableValues[] = [
+                    'koor_no'  => $index + 1,
+                    'koor_lng' => $koor[0] ?? 'N/A',
+                    'koor_lat' => $koor[1] ?? 'N/A',
+                ];
+            }
+        } else {
+            $tableValues[] = ['koor_no' => 'N/A', 'koor_lng' => 'N/A', 'koor_lat' => 'N/A'];
+        }
 
         foreach ($templates as $template) {
             try {
@@ -265,15 +290,14 @@ class PermohonanController extends Controller
                 }
 
                 $templateProcessor = new TemplateProcessor($templatePath);
-                $placeholders = $template->placeholders->pluck('var_key')->toArray();
 
-                $valuesToSet = [];
-                foreach ($placeholders as $key) {
-                    $valuesToSet[$key] = $replacementData[$key] ?? '';
-                }
+                // 3. PROSES DATA SIMPEL (PAKAI setValues)
+                $templateProcessor->setValues($replacementData);
 
-                $templateProcessor->setValues($valuesToSet);
+                // 4. PROSES DATA TABEL (PAKAI cloneRowAndSetValues)
+                $templateProcessor->cloneRowAndSetValues('koor_no', $tableValues);
 
+                // 5. SIMPAN FILE
                 $generatedDir = "generated_documents/{$permohonan->id}";
                 $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.docx';
                 $newFilePath = "{$generatedDir}/{$newFileName}";
