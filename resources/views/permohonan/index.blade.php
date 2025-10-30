@@ -2,16 +2,17 @@
 @section('title', 'Data Permohonan SITR')
 
 @section('page-script')
+    <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function(e) {
             let type = new URLSearchParams(window.location.search).get('type');
-            console.log(type);
             $('.select2').select2({
                 dropdownParent: '#statusModal',
                 placeholder: "Pilih"
             });
-            let a = document.querySelector(".dt-scrollableTable");
-            a && new DataTable(a, {
+
+            let tableEl = document.querySelector(".dt-scrollableTable");
+            tableEl && new DataTable(tableEl, {
                 processing: !0,
                 serverSide: !0,
                 ajax: "{{ route('permohonan.index') }}?type=" + type,
@@ -61,11 +62,10 @@
                             var deleteUrl = `/permohonan/${row.id}?type={{ $type }}`;
                             var namaPengusul = row.var_nama;
 
-                            // Siapkan tombol-tombolnya
                             let buttons = `
-                                    <div class="d-flex align-items-center">
-                                        <a href="${showUrl}" class="btn btn-sm btn-info me-1" data-bs-toggle="tooltip" title="Lihat Permohonan"><i class="fas fa-eye"></i></a>
-                                `;
+                                <div class="d-flex align-items-center">
+                                    <a href="${showUrl}" class="btn btn-sm btn-info me-1" data-bs-toggle="tooltip" title="Lihat Permohonan"><i class="fas fa-eye"></i></a>
+                            `;
 
                             @can('edit permohonan')
                                 if (row.enum_status !== 'approved') {
@@ -90,6 +90,43 @@
                                 `;
                             @endcan
 
+                            if (row.enum_status !== 'pending') {
+                                buttons += `
+                                    <div class="btn-group ms-1">
+                                        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Menu Tindakan">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            ${
+                                                row.permohonan_template_docs && row.permohonan_template_docs.length > 0 && row.permohonan_template_docs[0].var_generated_file_path
+                                                ? `
+                                                    <li>
+                                                        <button
+                                                            class="dropdown-item btn-preview-doc"
+                                                            data-doc-url="${row.permohonan_template_docs[0].var_generated_file_path}"
+                                                            type="button"
+                                                        >
+                                                            <i class="fas fa-file-word me-2"></i>Preview (.docx)
+                                                        </button>
+                                                    </li>
+                                                `
+                                                : `
+                                                    <li>
+                                                        <span class="dropdown-item text-muted" style="cursor:not-allowed;"><i class="fas fa-file-word me-2"></i>Preview - belum dibuat</span>
+                                                    </li>
+                                                `
+                                            }
+                                            ${row.enum_status === 'approved' ? `
+                                                <li>
+                                                    <a class="dropdown-item" href="${row.permohonan_template_docs[0].var_generated_file_path}" target="_blank">
+                                                        <i class="fas fa-signature me-2"></i>View TTE
+                                                    </a>
+                                                </li>
+                                            ` : ''}
+                                        </ul>
+                                    </div>
+                                `;
+                            }
                             buttons += `</div>`;
                             return buttons;
                         }
@@ -126,41 +163,31 @@
                     // Cari semua elemen tooltip yang baru digambar di dalam tabel
                     const tooltipTriggerList = [].slice.call(this.api().table().body().querySelectorAll(
                         '[data-bs-toggle="tooltip"]'));
-
-                    // Inisialisasi setiap tooltip
                     tooltipTriggerList.map(function(tooltipTriggerEl) {
                         return new bootstrap.Tooltip(tooltipTriggerEl);
                     });
                 },
             });
+
+            // Status modal
             const statusModal = document.getElementById('statusModal');
             statusModal.addEventListener('show.bs.modal', function(event) {
-                // Tombol mana yang di-klik?
                 const button = event.relatedTarget;
-
-                // Ambil ID dan status dari tombol
                 const permohonanId = button.getAttribute('data-id');
                 const currentStatus = button.getAttribute('data-status');
-
-                // Buat URL action untuk form
                 const formAction = `/permohonan/${permohonanId}/status`;
-
-                // Cari form di dalam modal dan set action-nya
                 const form = statusModal.querySelector('form');
                 form.setAttribute('action', formAction);
-
-                // Set nilai default untuk select status
                 const statusSelect = statusModal.querySelector('#status');
-                $(statusSelect).val(currentStatus).trigger('change'); // Pakai jQuery untuk Select2
+                $(statusSelect).val(currentStatus).trigger('change');
             });
 
+            // Delete handler
             $('.dt-scrollableTable').on('click', '.btn-delete', function(e) {
-                e.preventDefault(); // Mencegah aksi default link
-
+                e.preventDefault();
                 const deleteUrl = $(this).data('url');
                 const itemName = $(this).data('name');
                 const csrfToken = $('meta[name="csrf-token"]').attr('content');
-
                 Swal.fire({
                     title: 'Yakin ingin menghapus?',
                     text: `Data permohonan atas nama "${itemName}" akan dihapus permanen!`,
@@ -172,31 +199,44 @@
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Buat form dinamis untuk mengirim request DELETE
                         let form = document.createElement('form');
                         form.action = deleteUrl;
                         form.method = 'POST';
-                        form.style.display = 'none'; // Sembunyikan form
-
-                        // Tambahkan CSRF token
+                        form.style.display = 'none';
                         let csrfInput = document.createElement('input');
                         csrfInput.type = 'hidden';
                         csrfInput.name = '_token';
                         csrfInput.value = csrfToken;
                         form.appendChild(csrfInput);
-
-                        // Tambahkan method spoofing untuk DELETE
                         let methodInput = document.createElement('input');
                         methodInput.type = 'hidden';
                         methodInput.name = '_method';
                         methodInput.value = 'DELETE';
                         form.appendChild(methodInput);
-
                         document.body.appendChild(form);
                         form.submit();
                     }
                 });
             });
+
+            // Handle preview docx modal
+            $(document).on('click', '.btn-preview-doc', function() {
+                const docUrl = $(this).data('doc-url');
+                const $modal = $('#previewModal');
+                const $container = $('#modal-preview-content');
+                $container.html('<p class="text-center"><em>Loading preview...</em></p>');
+                $modal.modal('show');
+                fetch(docUrl)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        docx.renderAsync(blob, $container[0])
+                            .then(x => {})
+                            .catch(e => $container.html('<p class="text-center text-danger">Gagal memuat file preview.</p>'));
+                    }).catch(e => {
+                        $container.html('<p class="text-center text-danger">Gagal memuat file preview.</p>');
+                    });
+            });
+
         });
     </script>
 @endsection
@@ -263,6 +303,24 @@
                         </div>
                         <button type="submit" class="btn btn-primary">Ubah Status</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Preview DOCX --}}
+    <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header mb-4">
+                    <h5 class="modal-title" id="previewModalLabel">Document Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="modal-preview-content" class="overflow-hidden rounded" style="min-height: 400px;"></div>
+                </div>
+                <div class="modal-footer mt-4">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

@@ -859,7 +859,7 @@
                                         @php
                                             $selectedRedaksi = old('pilihan_redaksi_ids');
                                             if (is_null($selectedRedaksi) && isset($permohonan)) {
-                                                $selectedRedaksi = $permohonan->templateDocs->pluck('id')->toArray();
+                                                $selectedRedaksi = $permohonan->permohonanTemplateDocs->pluck('fk_template_docs_id')->toArray();
                                             }
                                         @endphp
                                         @foreach ($templateDocs as $templateDoc)

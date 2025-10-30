@@ -38,23 +38,10 @@ class PermohonanController extends Controller
     {
         $type = $request->type ?? 'sitr/rdtr';
         if ($request->ajax()) {
-            $query = Permohonan::where('var_type', $type)->orderBy('created_at', 'desc');
-            return DataTables::of($query)
-                ->addColumn('var_kabupaten', function ($row) {
-                    if (empty($row->var_kabupaten)) {
-                        return '-';
-                    }
-
-                    $regency = Regency::find($row->var_kabupaten);
-                    return $regency ? $regency->name : '(Tidak Ditemukan)';
-                })
-                // ->addColumn('status', function ($row) {
-                //     return $row->var_nomor_pengesahan
-                //         ? '<span class="badge bg-success">Selesai</span>'
-                //         : '<span class="badge bg-warning">Diproses</span>';
-                // })
-                ->rawColumns(['status'])
-                ->make(true);
+            $query = Permohonan::with('permohonanTemplateDocs.templateDocs')
+                ->where('var_type', $type)
+                ->orderBy('created_at', 'desc');
+            return DataTables::of($query)->make(true);
         }
         return view('permohonan.index', compact('type'));
     }
@@ -194,7 +181,7 @@ class PermohonanController extends Controller
 
         // Proses relasi template docs
         if (isset($validated['pilihan_redaksi_ids'])) {
-            $permohonan->templateDocs()->detach();
+            $permohonan->permohonanTemplateDocs()->delete();
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
                 $template_doc = TemplateDocs::find($template_doc_id);
                 if ($template_doc) {
@@ -211,7 +198,8 @@ class PermohonanController extends Controller
 
     public function show($id)
     {
-        $permohonan = Permohonan::findOrFail($id);
+        $permohonan = Permohonan::with('permohonanTemplateDocs.templateDocs')
+        ->findOrFail($id);
 
         return view('permohonan.show', [
             'permohonan' => $permohonan,
@@ -240,7 +228,7 @@ class PermohonanController extends Controller
             'var_lampiran' => $lampiranName,
         ]);
 
-        if ($request->status === 'approved') {
+        if ($request->status === 'request_tte') {
             $this->generateDocuments($permohonan);
         }
 
@@ -249,7 +237,7 @@ class PermohonanController extends Controller
 
     public function generateDocuments(Permohonan $permohonan)
     {
-        $templates = $permohonan->templateDocs;
+        $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()->with('templateDocs')->get();
 
         // 1. SIAPKAN DATA SIMPEL
         // $replacementData = $permohonan->toArray();
@@ -280,7 +268,14 @@ class PermohonanController extends Controller
             $tableValues[] = ['koor_no' => 'N/A', 'koor_lng' => 'N/A', 'koor_lat' => 'N/A'];
         }
 
-        foreach ($templates as $template) {
+        foreach ($permohonanTemplateDocs as $permohonanTemplateDoc) {
+            $template = $permohonanTemplateDoc->templateDocs;
+
+            if (!$template) {
+                Log::error("Data TemplateDocs tidak ditemukan untuk relasi ID: {$permohonanTemplateDoc->id}");
+                continue;
+            }
+
             try {
                 $templatePath = Storage::disk('public')->path($template->var_file_path);
 
@@ -307,7 +302,7 @@ class PermohonanController extends Controller
                 Storage::disk('public')->put($newFilePath, file_get_contents($tempFile));
                 unlink($tempFile);
 
-                $permohonan->templateDocs()->updateExistingPivot($template->id, [
+                $permohonanTemplateDoc->update([
                     'var_generated_file_path' => $newFilePath
                 ]);
             } catch (Exception $e) {

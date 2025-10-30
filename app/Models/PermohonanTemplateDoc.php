@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class PermohonanTemplateDoc extends Model
 {
@@ -15,5 +16,17 @@ class PermohonanTemplateDoc extends Model
     public function templateDocs()
     {
         return $this->belongsTo(TemplateDocs::class, "fk_template_docs_id");
+    }
+
+    public function getVarGeneratedFilePathAttribute($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        if (str_starts_with($value, 'http')) {
+            return $value;
+        }
+
+        return asset('storage/' . $value);
     }
 }

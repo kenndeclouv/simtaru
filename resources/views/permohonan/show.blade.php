@@ -335,7 +335,7 @@
                             <h5 class="fw-bold mt-4"># Dokumen Terkait</h5>
                             <form action="{{ route('permohonan.generateDocuments', $permohonan->id) }}" method="POST">
                                 @csrf
-                                @if ($permohonan->templateDocs->count() > 0)
+                                @if ($permohonan->permohonanTemplateDocs->count() > 0)
                                     <button type="submit" class="btn btn-primary">
                                         <i class="bx bx-file me-1"></i> Generate Dokumen
                                     </button>
@@ -353,28 +353,28 @@
                                     </tr>
                                 </thead>
                                 <tbody class="table-border-bottom-0">
-                                    @forelse ($permohonan->templateDocs as $doc)
+                                    @forelse ($permohonan->permohonanTemplateDocs as $doc)
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td><strong>{{ $doc->var_nama }}</strong></td>
                                             <td>
-                                                @if ($doc->pivot->var_generated_file_path)
+                                                @if ($doc->var_generated_file_path)
                                                     <span class="badge bg-label-success">Sudah Dibuat</span>
                                                 @else
                                                     <span class="badge bg-label-warning">Belum Dibuat</span>
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($doc->pivot->var_generated_file_path)
+                                                @if ($doc->var_generated_file_path)
                                                     <div class="d-flex">
-                                                        <a href="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}"
+                                                        <a href="{{ $doc->var_generated_file_path }}"
                                                             target="_blank" class="btn btn-sm btn-outline-primary me-2">
                                                             <i class="fa-solid fa-eye me-1"></i> Lihat
                                                         </a>
                                                         <button type="button"
                                                             class="btn btn-sm btn-outline-secondary preview-btn"
                                                             data-bs-toggle="modal" data-bs-target="#previewModal"
-                                                            data-file-url="{{ asset('storage/' . $doc->pivot->var_generated_file_path) }}">
+                                                            data-file-url="{{ $doc->var_generated_file_path }}">
                                                             <i class="bx bx-show me-1"></i> Preview
                                                         </button>
                                                     </div>

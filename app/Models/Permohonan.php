@@ -19,21 +19,26 @@ class Permohonan extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['var_nama', 'enum_status', 'text_catatan'])  // Catat perubahan hanya di kolom ini
-            ->setDescriptionForEvent(fn(string $eventName) => "Permohonan {$this->var_nama} telah di-{$eventName}")  // Deskripsi log
-            ->useLogName('Permohonan')  // Nama grup log
-            ->logOnlyDirty();  // Hanya catat jika ada perubahan
+            ->logOnly(['var_nama', 'enum_status', 'text_catatan'])
+            ->setDescriptionForEvent(fn(string $eventName) => "Permohonan {$this->var_nama} telah di-{$eventName}")
+            ->useLogName('Permohonan')
+            ->logOnlyDirty();
     }
 
-    public function templateDocs()
+    // public function templateDocs()
+    // {
+    //     return $this
+    //         ->belongsToMany(TemplateDocs::class, 'permohonans_template_docs', 'fk_permohonan_id', 'fk_template_docs_id')
+    //         ->withPivot('var_generated_file_path')
+    //         ->withTimestamps()
+    //         >using(PermohonanTemplateDoc::class);
+    // }
+
+    public function permohonanTemplateDocs()
     {
-        return $this
-            ->belongsToMany(TemplateDocs::class, 'permohonans_template_docs', 'fk_permohonan_id', 'fk_template_docs_id')
-            ->withPivot('var_generated_file_path')  // <-- PENTING!
-            ->withTimestamps();
+        return $this->hasMany(PermohonanTemplateDoc::class, 'fk_permohonan_id');
     }
 
-    // Location relationships
     public function province(): BelongsTo
     {
         return $this
@@ -88,10 +93,10 @@ class Permohonan extends Model
             });
     }
 
-    // Accessor methods for backward compatibility
+
     public function getNamaProvinsiAttribute()
     {
-        return $this->province->name;  // Langsung aja!
+        return $this->province->name;
     }
 
     public function getNamaKabupatenAttribute()
@@ -182,13 +187,12 @@ class Permohonan extends Model
 
     public function getKoordinatAttribute(): array
     {
-        // Kalo datanya kosong, balikin array kosong
         if (empty($this->json_geometry)) {
             return [];
         }
 
         try {
-            // Decode string JSON jadi object PHP
+
             $data = json_decode($this->json_geometry);
 
             if (!$data) {
@@ -198,44 +202,36 @@ class Permohonan extends Model
             $coordinates = [];
             $geometry = null;
 
-            // Cek 1: Apakah ini FeatureCollection
             if (isset($data->type) && $data->type === 'FeatureCollection' && isset($data->features[0])) {
                 $geometry = $data->features[0]->geometry ?? null;
             }
-            // Cek 2: Apakah ini satu Feature (KASUSMU YANG INI)
+
             else if (isset($data->type) && $data->type === 'Feature' && isset($data->geometry)) {
                 $geometry = $data->geometry;
             }
-            // Cek 3: Apakah ini data geometri langsung
+
             else if (isset($data->type) && ($data->type === 'Polygon' || $data->type === 'LineString' || $data->type === 'Point')) {
                 $geometry = $data;
             }
 
-            // --- Ekstrak koordinat dari geometri yang ditemukan ---
-
-            // Kalo tipenya Polygon
             if ($geometry && isset($geometry->type) && $geometry->type === 'Polygon' && isset($geometry->coordinates[0])) {
-                // $geometry->coordinates[0] adalah array berisi [lng, lat], [lng, lat], ...
+
                 $coordinates = $geometry->coordinates[0];
             }
-            // ==========================================================
-            // INI BLOK BARUNYA UNTUK LineString
-            // ==========================================================
+
             else if ($geometry && isset($geometry->type) && $geometry->type === 'LineString' && isset($geometry->coordinates)) {
-                // $geometry->coordinates adalah array berisi [lng, lat], [lng, lat], ...
-                $coordinates = $geometry->coordinates;  // <- Perhatiin, gak pakai [0]
-            }
-            // ==========================================================
-            // Kalo tipenya Point (satu titik aja)
-            else if ($geometry && isset($geometry->type) && $geometry->type === 'Point' && isset($geometry->coordinates)) {
-                // $geometry->coordinates adalah [lng, lat]
-                $coordinates = [$geometry->coordinates];  // Kita bungkus array biar konsisten
+
+                $coordinates = $geometry->coordinates;
             }
 
-            // Pastikan hasilnya array
+            else if ($geometry && isset($geometry->type) && $geometry->type === 'Point' && isset($geometry->coordinates)) {
+
+                $coordinates = [$geometry->coordinates];
+            }
+
             return is_array($coordinates) ? $coordinates : [];
         } catch (\Exception $e) {
-            // Log error kalo JSON-nya aneh / gak valid
+
             Log::error('Gagal parse json_geometry (ID: {$this->id}): ' . $e->getMessage());
             return [];
         }

@@ -19,7 +19,7 @@ trait ManagesPermohonan
     public function index(Request $request)
     {
         $permohonan = Permohonan::where('var_type', $this->permohonanType)
-            ->with('templateDocs')
+            ->with('permohonanTemplateDocs.templateDocs')
             ->latest()
             ->paginate($request->query('per_page', 10));
         return PermohonanResource::collection($permohonan);
@@ -88,7 +88,7 @@ trait ManagesPermohonan
             }
         }
 
-        return (new PermohonanResource($permohonan->load('templateDocs')))
+        return (new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs')))
             ->additional(['message' => 'Permohonan berhasil dibuat.'])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
@@ -99,7 +99,7 @@ trait ManagesPermohonan
         if ($permohonan->var_type !== $this->permohonanType) {
             abort(404, 'Data tidak ditemukan.');
         }
-        return new PermohonanResource($permohonan->load('templateDocs'));
+        return new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs'));
     }
 
     public function update(FormRequest $request, Permohonan $permohonan)
@@ -146,7 +146,7 @@ trait ManagesPermohonan
 
         // Proses relasi template docs
         if (isset($validated['pilihan_redaksi_ids'])) {
-            $permohonan->templateDocs()->detach();
+            $permohonan->permohonanTemplateDocs()->delete();
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
                 $template_doc = TemplateDocs::find($template_doc_id);
                 if ($template_doc) {
@@ -158,7 +158,7 @@ trait ManagesPermohonan
             }
         }
 
-        return (new PermohonanResource($permohonan->load('templateDocs')))
+        return (new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs')))
             ->additional(['message' => 'Permohonan berhasil diperbarui.']);
     }
 
@@ -183,7 +183,9 @@ trait ManagesPermohonan
             return response()->json(['message' => 'Data tidak ditemukan.'], 404);
         }
 
-        $templates = $permohonan->templateDocs;
+        $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()
+            ->with('templateDocs')
+            ->get();
 
         // 1. SIAPKAN DATA SIMPEL
         $replacementData = $permohonan->getAttributes();
@@ -212,7 +214,14 @@ trait ManagesPermohonan
         }
 
         $generatedFiles = [];
-        foreach ($templates as $template) {
+        foreach ($permohonanTemplateDocs as $permohonanTemplateDoc) {
+            $template = $permohonanTemplateDoc->templateDocs;
+
+            if (!$template) {
+                Log::error("Data TemplateDocs tidak ditemukan untuk relasi ID: {$permohonanTemplateDoc->id}");
+                continue;
+            }
+
             try {
                 $templatePath = Storage::disk('public')->path($template->var_file_path);
 
@@ -238,7 +247,7 @@ trait ManagesPermohonan
                 Storage::disk('public')->put($newFilePath, file_get_contents($tempFile));
                 unlink($tempFile);
 
-                $permohonan->templateDocs()->updateExistingPivot($template->id, [
+                $permohonanTemplateDoc->update([
                     'var_generated_file_path' => $newFilePath
                 ]);
 
