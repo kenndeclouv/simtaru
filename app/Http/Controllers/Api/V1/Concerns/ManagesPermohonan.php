@@ -9,18 +9,19 @@ use App\Models\PermohonanTemplateDoc;
 use App\Models\TemplateDocs;
 use Exception;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 trait ManagesPermohonan
 {
-    public function index()
+    public function index(Request $request)
     {
         $permohonan = Permohonan::where('var_type', $this->permohonanType)
             ->with('templateDocs')
             ->latest()
-            ->paginate(10);
+            ->paginate($request->query('per_page', 10));
         return PermohonanResource::collection($permohonan);
     }
 

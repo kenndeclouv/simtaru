@@ -30,7 +30,7 @@
                             data: 'var_rencana_usaha',
                             title: 'Rencana Usaha'
                         },
-                    @endif 
+                    @endif
                     {
                         data: 'date_tanggal_permohonan',
                         title: 'Tgl Permohonan',
@@ -42,9 +42,11 @@
                         searchable: false,
                         render: function(data, type, row) {
                             return data === 'approved' ?
-                                '<span class="badge bg-label-success">Selesai</span>' :
+                                '<span class="badge bg-label-success">Diterima & telah di TTE</span>' :
                                 data === 'pending' ?
                                 '<span class="badge bg-label-warning">Diproses</span>' :
+                                data === 'request_tte' ?
+                                '<span class="badge bg-label-warning">Proses TTE</span>' :
                                 '<span class="badge bg-label-danger">Ditolak</span>';
                         }
                     },
@@ -66,12 +68,16 @@
                                 `;
 
                             @can('edit permohonan')
+                                if (row.enum_status !== 'approved') {
+                                    buttons += `
+                                        <div data-bs-toggle="tooltip" title="Ubah Status Permohonan">
+                                            <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#statusModal" data-id="${row.id}" data-status="${row.enum_status}">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </div>
+                                    `;
+                                }
                                 buttons += `
-                                    <div data-bs-toggle="tooltip" title="Ubah Status Permohonan">
-                                        <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#statusModal" data-id="${row.id}" data-status="${row.enum_status}">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    </div>
                                     <a href="${editUrl}" class="btn btn-sm btn-warning me-1" data-bs-toggle="tooltip" title="Edit Permohonan"><i class="fas fa-pen-to-square"></i></a>
                                 `;
                             @endcan
@@ -243,7 +249,7 @@
                             <label for="status" class="form-label">Status</label>
                             <select name="status" id="status" class="form-select select2">
                                 <option value="" select>Pilih Status</option>
-                                <option value="approved">Verifikasi</option>
+                                <option value="request_tte">Verifikasi & Pengajuan TTE</option>
                                 <option value="rejected">Ditolak</option>
                             </select>
                         </div>

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\KkprController;
 use App\Http\Controllers\Api\V1\LocationController;
+use App\Http\Controllers\Api\V1\PermohonanAdminController;
 use App\Http\Controllers\Api\V1\SitrRdtrController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,9 @@ Route::group(['prefix' => 'v1'], function () {
         Route::post('/permohonan/kkpr/{permohonan}/generate-docs', [
             KkprController::class, 'generateDocuments'
         ])->name('api.kkpr.generate');
+
+        Route::get('/permohonan/tte-queue', [PermohonanAdminController::class, 'tteQueue'])
+              ->name('api.permohonan.tteQueue');
     });
 
     Route::prefix('location')->group(function () {

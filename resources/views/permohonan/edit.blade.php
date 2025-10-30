@@ -759,7 +759,7 @@
                     </div>
                 </div>
 
-                @if ($type == 'sitr/rdtr')
+                {{-- @if ($type == 'sitr/rdtr') --}}
                     <div class="col-12 mt-4">
                         <div class="card">
                             <h5 class="card-header border-bottom mb-3">Peta Lokasi</h5>
@@ -775,7 +775,7 @@
                             </div>
                         </div>
                     </div>
-                @endif
+                {{-- @endif --}}
 
                 <div class="col-12 mt-4">
                     <div class="card">
