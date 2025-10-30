@@ -25,15 +25,6 @@ class Permohonan extends Model
             ->logOnlyDirty();
     }
 
-    // public function templateDocs()
-    // {
-    //     return $this
-    //         ->belongsToMany(TemplateDocs::class, 'permohonans_template_docs', 'fk_permohonan_id', 'fk_template_docs_id')
-    //         ->withPivot('var_generated_file_path')
-    //         ->withTimestamps()
-    //         >using(PermohonanTemplateDoc::class);
-    // }
-
     public function permohonanTemplateDocs()
     {
         return $this->hasMany(PermohonanTemplateDoc::class, 'fk_permohonan_id');
@@ -235,5 +226,15 @@ class Permohonan extends Model
             Log::error('Gagal parse json_geometry (ID: {$this->id}): ' . $e->getMessage());
             return [];
         }
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function requestTteBy()
+    {
+        return $this->belongsTo(User::class, 'request_tte_by_id');
     }
 }

@@ -27,7 +27,7 @@ class PermissionSeeder extends Seeder
         ];
         $actions = ['view', 'create', 'edit', 'delete'];
         $specialFeatures = [
-            'permohonan' => ['approve'],
+            'permohonan' => ['approve', 'view any', 'edit any', 'delete any'],
             'logs' => ['download'],
             'performance' => ['view'],
             'route-list' => ['view'],

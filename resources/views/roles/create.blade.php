@@ -5,28 +5,20 @@
 @section('page-script')
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // --- SIHIR UX DIMULAI DARI SINI ---
 
-            // 1. Tombol Master "Pilih Semua"
             $('#check-all-master').on('click', function() {
-                // Cari semua checkbox permission di dalam tabel dan set statusnya
                 $('table tbody .permission-check').prop('checked', $(this).prop('checked'));
             });
 
-            // 2. Tombol "Pilih Semua" per KOLOM (berdasarkan Aksi)
             $('.check-all-column').on('click', function() {
-                const columnIndex = $(this).closest('th')
-            .index(); // Dapatkan index kolom (misal: kolom "view" itu index 1)
-                // Cari semua checkbox di kolom itu (tidak termasuk header) dan set statusnya
+                const columnIndex = $(this).closest('th').index();
                 $('table tbody tr').each(function() {
                     $(this).find('td').eq(columnIndex).find('.permission-check').prop('checked', $(
                         this).closest('th').find('.check-all-column').prop('checked'));
                 });
             });
 
-            // 3. Tombol "Pilih Semua" per BARIS (berdasarkan Fitur)
             $('.check-all-row').on('click', function() {
-                // Cari semua checkbox di baris yang sama dan set statusnya
                 $(this).closest('tr').find('.permission-check').prop('checked', $(this).prop('checked'));
             });
         });
@@ -46,7 +38,7 @@
                     <div class="mb-3">
                         <label for="name" class="form-label">Nama Role</label>
                         <input type="text" name="name" id="name" class="form-control" required
-                            placeholder="Contoh: Staff Lapangan">
+                            placeholder="Contoh: Staff Lapangan" value="{{ old('name') }}">
                     </div>
                 </div>
             </div>
@@ -69,14 +61,21 @@
                                     <th class="align-middle" style="min-width: 160px;">
                                         Fitur
                                     </th>
+                                    {{-- Kolom header-nya sekarang isinya 'view', 'view any', 'create', dll --}}
                                     @foreach ($actions as $action)
                                         <th class="text-center text-capitalize align-middle" style="min-width: 120px;">
                                             <div>{{ $action }}</div>
+                                            {{-- Bonus: Tombol check all per kolom --}}
+                                            <div class="form-check d-flex justify-content-center mt-1">
+                                                <input class="form-check-input check-all-column" type="checkbox"
+                                                    title="Pilih semua '{{ $action }}'">
+                                            </div>
                                         </th>
                                     @endforeach
                                 </tr>
                             </thead>
                             <tbody>
+                                {{-- $permissionsByGroup sekarang [ 'permohonan' => [ 'view' => 'view permohonan', 'view any' => 'view any permohonan' ] ] --}}
                                 @foreach ($permissionsByGroup as $feature => $permissionsInGroup)
                                     <tr>
                                         <td class="text-capitalize align-middle" style="vertical-align: middle;">
@@ -88,14 +87,21 @@
                                                 <span>{{ $feature }}</span>
                                             </div>
                                         </td>
+
+                                        {{-- Loop per kolom aksi --}}
                                         @foreach ($actions as $action)
                                             <td class="text-center align-middle">
-                                                @if (in_array($action . ' ' . $feature, $permissionsInGroup))
+                                                @php
+                                                    $permissionName = $permissionsInGroup[$action] ?? null;
+                                                @endphp
+
+                                                @if ($permissionName)
                                                     <div class="form-check d-flex justify-content-center">
                                                         <input class="form-check-input permission-check" type="checkbox"
-                                                            name="permissions[]" value="{{ $action . ' ' . $feature }}">
+                                                            name="permissions[]" value="{{ $permissionName }}">
                                                     </div>
                                                 @else
+                                                    {{-- Kalo permission-nya nggak ada (e.g., 'approve' di 'template'), kasih strip --}}
                                                     <span class="text-muted">-</span>
                                                 @endif
                                             </td>

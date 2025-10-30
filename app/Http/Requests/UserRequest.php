@@ -26,13 +26,15 @@ class UserRequest extends FormRequest
             'email' => 'required|email|unique:users,email,' . $userId,
             'password' => 'nullable|min:8|confirmed|regex:/^(?=.*[A-Z]).+$/',
             'role' => 'required|exists:roles,name',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ];
 
         if ($request->method() === 'PUT' || $request->method() === 'PATCH') {
             $rules['name'] = 'sometimes|string|max:255';
-            $rules['email'] = 'nullable|email';
+            $rules['email'] = 'sometimes|email';
             $rules['password'] = 'nullable|min:8|confirmed|regex:/^(?=.*[A-Z]).+$/';
-            $rules['role'] = 'nullable|exists:roles,name';
+            $rules['role'] = 'sometimes|exists:roles,name';
+            $rules['photo'] = 'sometimes|nullable|image|mimes:jpg,jpeg,png|max:2048';
         }
         return $rules;
     }

@@ -28,10 +28,7 @@ class PermohonanController extends Controller
     {
         $this->middleware('auth');
 
-        $this->middleware('can:view permohonan')->only(['index', 'show']);
-        $this->middleware('can:create permohonan')->only(['create', 'store']);
-        $this->middleware('can:edit permohonan')->only(['edit', 'update']);
-        $this->middleware('can:delete permohonan')->only(['destroy']);
+        $this->authorizeResource(Permohonan::class, 'permohonan');
     }
 
     public function index(Request $request)
@@ -39,8 +36,18 @@ class PermohonanController extends Controller
         $type = $request->type ?? 'sitr/rdtr';
         if ($request->ajax()) {
             $query = Permohonan::with('permohonanTemplateDocs.templateDocs')
-                ->where('var_type', $type)
-                ->orderBy('created_at', 'desc');
+                ->where('var_type', $type);
+
+            $user = Auth::user();
+
+            if (!$user->can('view any permohonan') && $user->can('view permohonan')) {
+                $query->where('user_id', $user->id);
+            }
+            else if (!$user->can('view any permohonan') && !$user->can('view permohonan')) {
+                $query->where('id', 0);
+            }
+
+            $query->orderBy('created_at', 'desc');
             return DataTables::of($query)->make(true);
         }
         return view('permohonan.index', compact('type'));
@@ -64,7 +71,8 @@ class PermohonanController extends Controller
     {
         $validated = $request->validated();
 
-        // Generate nomor permohonan & pengesahan
+        $user = Auth::user();
+
         $tahun = now()->year;
         $last = (Permohonan::latest()->first()->id ?? 0) + 1;
         $preFixNomorPermohonan = KeyStorage::where('var_key', 'preFixNomorPermohonan')->first()->var_value;
@@ -72,14 +80,13 @@ class PermohonanController extends Controller
         $preFixNomorSurat = KeyStorage::where('var_key', 'preFixNomorSurat')->first()->var_value;
         $postFixNomorSurat = KeyStorage::where('var_key', 'postFixNomorSurat')->first()->var_value;
 
+        $validated["user_id"] = $user->id;
         $validated['var_nomor_permohonan'] = "{$preFixNomorPermohonan}{$last}{$postFixNomorPermohonan}{$tahun}";
         $validated['var_nomor_pengesahan'] = "{$preFixNomorSurat}{$last}{$postFixNomorSurat}{$tahun}";
         $validated['var_type'] = $validated['var_type'] ?? 'sitr/rdtr';
 
-        // Buat permohonan DULUAN, tanpa data attachment
         $permohonan = Permohonan::create($validated);
 
-        // Proses attachment
         $attachmentFields = [
             'var_fotocopy_ktp_attachment',
             'var_fotocopy_npwp_attachment',
@@ -96,7 +103,7 @@ class PermohonanController extends Controller
         $finalAttachmentPaths = [];
 
         foreach ($attachmentFields as $field) {
-            $tempPath = $validated[$field] ?? null;  // e.g., "tmp/randomname.pdf"
+            $tempPath = $validated[$field] ?? null;
             if ($tempPath && Storage::disk('public')->exists($tempPath)) {
                 $fileName = basename($tempPath);
                 $permanentPath = "permohonan/{$permohonan->id}/{$field}/{$fileName}";
@@ -105,12 +112,12 @@ class PermohonanController extends Controller
             }
         }
 
-        // Update record permohonan dengan path attachment yang permanen
+
         if (!empty($finalAttachmentPaths)) {
             $permohonan->update($finalAttachmentPaths);
         }
 
-        // Proses relasi template docs
+
         if (isset($validated['pilihan_redaksi_ids'])) {
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
                 $template_doc = TemplateDocs::find($template_doc_id);
@@ -144,7 +151,7 @@ class PermohonanController extends Controller
     {
         $validated = $request->validated();
 
-        // Proses attachment
+
         $attachmentFields = [
             'var_fotocopy_ktp_attachment',
             'var_fotocopy_npwp_attachment',
@@ -161,9 +168,9 @@ class PermohonanController extends Controller
         $finalAttachmentPaths = [];
 
         foreach ($attachmentFields as $field) {
-            $tempPath = $validated[$field] ?? null;  // e.g., "tmp/randomname.pdf"
+            $tempPath = $validated[$field] ?? null;
             if ($tempPath && Storage::disk('public')->exists($tempPath)) {
-                // Delete old file if exists
+
                 if ($permohonan->$field && Storage::disk('public')->exists($permohonan->$field)) {
                     Storage::disk('public')->delete($permohonan->$field);
                 }
@@ -175,11 +182,11 @@ class PermohonanController extends Controller
             }
         }
 
-        // Update record permohonan dengan data validated dan path attachment yang permanen
+
         $updateData = array_merge($validated, $finalAttachmentPaths);
         $permohonan->update($updateData);
 
-        // Proses relasi template docs
+
         if (isset($validated['pilihan_redaksi_ids'])) {
             $permohonan->permohonanTemplateDocs()->delete();
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
@@ -214,6 +221,8 @@ class PermohonanController extends Controller
 
     public function status(Permohonan $permohonan, Request $request)
     {
+        $this->authorize('approve', $permohonan);
+
         $lampiranName = null;
         if ($request->hasFile('lampiran')) {
             $lampiran = $request->file('lampiran');
@@ -221,26 +230,37 @@ class PermohonanController extends Controller
             $lampiran->storeAs('uploads', $lampiranName);
         }
 
-        $permohonan->update([
+        $updateData = [
             'enum_status' => $request->status,
-            'date_tanggal_pengesahan' => $request->status === 'approved' ? now() : null,
             'text_catatan' => $request->catatan,
-            'var_lampiran' => $lampiranName,
-        ]);
+        ];
+
+        if ($lampiranName) {
+            $updateData['var_lampiran'] = $lampiranName;
+        }
 
         if ($request->status === 'request_tte') {
+            $updateData['request_tte_by_id'] = Auth::user()->id;
+            $updateData['request_tte_date'] = now();
             $this->generateDocuments($permohonan);
+        } else if ($request->status === 'rejected') {
+            $updateData['request_tte_by_id'] = null;
+            $updateData['request_tte_date'] = null;
+        } else if ($request->status === 'approved') {
+            $updateData['approved_date'] = now();
         }
+
+        $permohonan->update($updateData);
 
         return redirect()->back()->with('success', 'Status permohonan berhasil diubah.');
     }
 
     public function generateDocuments(Permohonan $permohonan)
     {
+        $this->authorize('update', $permohonan);
+
         $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()->with('templateDocs')->get();
 
-        // 1. SIAPKAN DATA SIMPEL
-        // $replacementData = $permohonan->toArray();
         $replacementData = $permohonan->getAttributes();
 
         $replacementData['var_provinsi'] = $permohonan->nama_provinsi;
@@ -249,11 +269,11 @@ class PermohonanController extends Controller
         $replacementData['var_kelurahan'] = $permohonan->nama_kelurahan;
         $replacementData['var_kecamatan_usaha'] = $permohonan->nama_kecamatan_usaha;
         $replacementData['var_kelurahan_usaha'] = $permohonan->nama_kelurahan_usaha;
-        // Hapus 'json_geometry' dari data simpel biar nggak ke-print mentah
+
         unset($replacementData['json_geometry']);
 
-        // 2. SIAPKAN DATA TABEL KOORDINAT
-        $koordinatList = $permohonan->koordinat; // Ini hasilnya [[lng, lat], [lng, lat], ...]
+
+        $koordinatList = $permohonan->koordinat;
 
         $tableValues = [];
         if (!empty($koordinatList)) {
@@ -286,13 +306,13 @@ class PermohonanController extends Controller
 
                 $templateProcessor = new TemplateProcessor($templatePath);
 
-                // 3. PROSES DATA SIMPEL (PAKAI setValues)
+
                 $templateProcessor->setValues($replacementData);
 
-                // 4. PROSES DATA TABEL (PAKAI cloneRowAndSetValues)
+
                 $templateProcessor->cloneRowAndSetValues('koor_no', $tableValues);
 
-                // 5. SIMPAN FILE
+
                 $generatedDir = "generated_documents/{$permohonan->id}";
                 $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.docx';
                 $newFilePath = "{$generatedDir}/{$newFileName}";
@@ -321,13 +341,13 @@ class PermohonanController extends Controller
         }
 
         try {
-            // 1. Load GeoJSON dari database
+
             $geojson = geoPHP::load($permohonan->json_geometry, 'json');
 
-            // 2. Dapatkan HANYA potongan geometrinya saja
+
             $geometryFragment = $geojson->out('kml');
 
-            // 3. Buat struktur KML lengkap secara manual (pakai HEREDOC biar rapi)
+
             $fullKml = <<<KML
                 <?xml version="1.0" encoding="UTF-8"?>
                 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -339,10 +359,10 @@ class PermohonanController extends Controller
                 </kml>
                 KML;
 
-            // 4. Buat nama file
+
             $fileName = 'lokasi_' . preg_replace('/[^A-Za-z0-9\-]/', '', $permohonan->var_nama_usaha) . '.kml';
 
-            // 5. Kembalikan file KML yang sudah lengkap
+
             return response($fullKml, 200, [
                 'Content-Type' => 'application/vnd.google-earth.kml+xml',
                 'Content-Disposition' => 'attachment; filename="' . $fileName . '"',

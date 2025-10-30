@@ -13,22 +13,40 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 trait ManagesPermohonan
 {
     public function index(Request $request)
     {
-        $permohonan = Permohonan::where('var_type', $this->permohonanType)
-            ->with('permohonanTemplateDocs.templateDocs')
-            ->latest()
+        $user = Auth::user();
+
+        $query = Permohonan::with('permohonanTemplateDocs.templateDocs')
+            ->where('var_type', $this->permohonanType);
+
+        // Imitate the permission in PermohonanController
+        if (!$user->can('view any permohonan') && $user->can('view permohonan')) {
+            $query->where('user_id', $user->id);
+        } else if (!$user->can('view any permohonan') && !$user->can('view permohonan')) {
+            $query->where('id', 0); // No access, show nothing
+        }
+
+        $permohonan = $query->latest()
             ->paginate($request->query('per_page', 10));
+
         return PermohonanResource::collection($permohonan);
     }
 
     public function store(FormRequest $request)
     {
+        $user = Auth::user();
+        if (!$user->can('create', Permohonan::class)) {
+            abort(403, 'Unauthorized.');
+        }
+
         $validated = $request->validated();
         $validated['var_type'] = $this->permohonanType;
+        $validated['user_id'] = $user->id;
 
         // Generate nomor permohonan & pengesahan
         $tahun = now()->year;
@@ -96,16 +114,24 @@ trait ManagesPermohonan
 
     public function show(Permohonan $permohonan)
     {
+        $user = Auth::user();
         if ($permohonan->var_type !== $this->permohonanType) {
             abort(404, 'Data tidak ditemukan.');
+        }
+        if ($user->cannot('view', $permohonan)) {
+            abort(403, 'Unauthorized.');
         }
         return new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs'));
     }
 
     public function update(FormRequest $request, Permohonan $permohonan)
     {
+        $user = Auth::user();
         if ($permohonan->var_type !== $this->permohonanType) {
             abort(404, 'Data tidak ditemukan.');
+        }
+        if ($user->cannot('update', $permohonan)) {
+            abort(403, 'Unauthorized.');
         }
         $validated = $request->validated();
 
@@ -164,8 +190,12 @@ trait ManagesPermohonan
 
     public function destroy(Permohonan $permohonan)
     {
+        $user = Auth::user();
         if ($permohonan->var_type !== $this->permohonanType) {
             abort(404, 'Data tidak ditemukan.');
+        }
+        if ($user->cannot('delete', $permohonan)) {
+            abort(403, 'Unauthorized.');
         }
         $permohonan->delete();
         return response()->json(['message' => 'Permohonan berhasil dihapus.'], Response::HTTP_OK);
@@ -179,8 +209,13 @@ trait ManagesPermohonan
      */
     public function generateDocuments(Permohonan $permohonan)
     {
+        $user = Auth::user();
         if ($permohonan->var_type !== $this->permohonanType) {
             return response()->json(['message' => 'Data tidak ditemukan.'], 404);
+        }
+        // Only allow generating if the user can update (like generating in status 'request_tte')
+        if ($user->cannot('update', $permohonan)) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()

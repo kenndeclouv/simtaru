@@ -1,32 +1,21 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Role')
+@section('title', 'Edit Role: ' . $role->name)
 
 @section('page-script')
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // --- SIHIR UX DIMULAI DARI SINI ---
-
-            // 1. Tombol Master "Pilih Semua"
             $('#check-all-master').on('click', function() {
-                // Cari semua checkbox permission di dalam tabel dan set statusnya
                 $('table tbody .permission-check').prop('checked', $(this).prop('checked'));
             });
-
-            // 2. Tombol "Pilih Semua" per KOLOM (berdasarkan Aksi)
             $('.check-all-column').on('click', function() {
-                const columnIndex = $(this).closest('th')
-                    .index(); // Dapatkan index kolom (misal: kolom "view" itu index 1)
-                // Cari semua checkbox di kolom itu (tidak termasuk header) dan set statusnya
+                const columnIndex = $(this).closest('th').index();
                 $('table tbody tr').each(function() {
                     $(this).find('td').eq(columnIndex).find('.permission-check').prop('checked', $(
                         this).closest('th').find('.check-all-column').prop('checked'));
                 });
             });
-
-            // 3. Tombol "Pilih Semua" per BARIS (berdasarkan Fitur)
             $('.check-all-row').on('click', function() {
-                // Cari semua checkbox di baris yang sama dan set statusnya
                 $(this).closest('tr').find('.permission-check').prop('checked', $(this).prop('checked'));
             });
         });
@@ -37,17 +26,18 @@
     <div class="container-xxl flex-grow-1 container-p-y">
         <x-breadcrumb :items="[['text' => 'Roles', 'url' => route('roles.index')], ['text' => 'Edit Role']]" />
         <form action="{{ route('roles.update', $role->id) }}" method="POST">
-            @method('PUT')
             @csrf
+            @method('PUT')
+
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5>Edit Role</h5>
+                    <h5>Edit Role: {{ $role->name }}</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="name" class="form-label">Nama Role</label>
                         <input type="text" name="name" id="name" class="form-control" required
-                            placeholder="Contoh: Staff Lapangan" value="{{ $role->name }}">
+                            placeholder="Contoh: Staff Lapangan" value="{{ old('name', $role->name) }}">
                     </div>
                 </div>
             </div>
@@ -73,6 +63,10 @@
                                     @foreach ($actions as $action)
                                         <th class="text-center text-capitalize align-middle" style="min-width: 120px;">
                                             <div>{{ $action }}</div>
+                                            <div class="form-check d-flex justify-content-center mt-1">
+                                                <input class="form-check-input check-all-column" type="checkbox"
+                                                    title="Pilih semua '{{ $action }}'">
+                                            </div>
                                         </th>
                                     @endforeach
                                 </tr>
@@ -91,11 +85,14 @@
                                         </td>
                                         @foreach ($actions as $action)
                                             <td class="text-center align-middle">
-                                                @if (in_array($action . ' ' . $feature, $permissionsInGroup))
+                                                @php
+                                                    $permissionName = $permissionsInGroup[$action] ?? null;
+                                                @endphp
+                                                @if ($permissionName)
                                                     <div class="form-check d-flex justify-content-center">
                                                         <input class="form-check-input permission-check" type="checkbox"
-                                                            name="permissions[]" value="{{ $action . ' ' . $feature }}"
-                                                            {{ in_array($action . ' ' . $feature, $rolePermissions) ? 'checked' : '' }}>
+                                                            name="permissions[]" value="{{ $permissionName }}"
+                                                            {{ in_array($permissionName, $rolePermissions) ? 'checked' : '' }}>
                                                     </div>
                                                 @else
                                                     <span class="text-muted">-</span>
@@ -109,8 +106,7 @@
                     </div>
                 </div>
             </div>
-
-            <button type="submit" class="btn btn-primary mt-3">Simpan Role</button>
+            <button type="submit" class="btn btn-primary mt-3">Simpan Perubahan</button>
         </form>
     </div>
 @endsection

@@ -48,14 +48,9 @@ class User extends Authenticatable
         ];
     }
 
-    // public function setPasswordAttribute($value)
-    // {
-    //     $this->attributes['password'] = bcrypt($value);
-    // }
-
     private function getConsistentColor()
     {
-        $hash = md5($this->name ?? 'Averroes');
+        $hash = md5($this->name ?? 'Simtaru');
         $color = substr($hash, 0, 6);
 
         return $color;
@@ -63,10 +58,10 @@ class User extends Authenticatable
     public function getPhotoAttribute($value)
     {
         if (!empty($value) && !is_null($value)) {
-            return $value;
+            return asset('storage/' . $value);
         }
         $color = $this->getConsistentColor();
-        $name = $this->name ?? 'Averroes';
+        $name = $this->name ?? 'Simtaru';
 
         return "https://api.dicebear.com/6.x/initials/svg?seed=" . urlencode($name) . "&backgroundColor=" . $color;
     }
