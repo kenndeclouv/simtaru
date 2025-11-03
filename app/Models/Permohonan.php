@@ -233,8 +233,8 @@ class Permohonan extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function requestTteBy()
+    public function userRequestTteBy()
     {
-        return $this->belongsTo(User::class, 'request_tte_by_id');
+        return $this->belongsTo(User::class, 'user_request_tte_id');
     }
 }

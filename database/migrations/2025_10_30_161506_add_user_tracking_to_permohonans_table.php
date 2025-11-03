@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::table('permohonans', function (Blueprint $table) {
             $table->foreignId('user_id')->nullable()->after('id')->constrained('users')->onDelete('set null');
-            $table->foreignId('request_tte_by_id')->nullable()->after('enum_status')->constrained('users')->onDelete('set null');
-            $table->string('var_penandatangan')->nullable()->after('request_tte_by_id');
-            $table->date('request_tte_date')->nullable()->after('var_penandatangan');
-            $table->date('approved_date')->nullable()->after('request_tte_date');
+            $table->foreignId('user_request_tte_id')->nullable()->after('enum_status')->constrained('users')->onDelete('set null');
+            $table->string('var_penandatangan')->nullable()->after('user_request_tte_id');
+            $table->timestamp('request_tte_date')->nullable()->after('var_penandatangan');
+            $table->timestamp('approved_date')->nullable()->after('request_tte_date');
         });
     }
 
@@ -27,9 +27,9 @@ return new class extends Migration
     {
         Schema::table('permohonans', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
-            $table->dropForeign(['request_tte_by_id']);
+            $table->dropForeign(['user_request_tte_id']);
 
-            $table->dropColumn(['user_id', 'request_tte_by_id', 'var_penandatangan','request_tte_date','approved_date']);
+            $table->dropColumn(['user_id', 'user_request_tte_id', 'var_penandatangan','request_tte_date','approved_date']);
         });
     }
 };

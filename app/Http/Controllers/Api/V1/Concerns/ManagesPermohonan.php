@@ -21,7 +21,7 @@ trait ManagesPermohonan
     {
         $user = Auth::user();
 
-        $query = Permohonan::with('permohonanTemplateDocs.templateDocs')
+        $query = Permohonan::with(['permohonanTemplateDocs.templateDocs', 'user', 'userRequestTteBy'])
             ->where('var_type', $this->permohonanType);
 
         // Imitate the permission in PermohonanController

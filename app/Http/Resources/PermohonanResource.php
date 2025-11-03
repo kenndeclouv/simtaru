@@ -11,7 +11,14 @@ class PermohonanResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'tipe_permohonan' => $this->var_type,  // Tambahkan ini agar jelas
+            'user' => $this->when(!empty($this->user_id), function () {
+                return new UserResource($this->whenLoaded('user') ?? $this->user);
+            }),
+            'user_request_tte' => $this->when(!empty($this->user_request_tte_id), function () {
+                return new UserResource($this->whenLoaded('userRequestTteBy') ?? $this->userRequestTteBy);
+            }),
+            'penandatangan' => $this->whenNotNull($this->var_penandatangan),
+            'tipe_permohonan' => $this->var_type,
             'status' => $this->enum_status,
             // --- DATA UTAMA ---
             'nomor_permohonan' => $this->var_nomor_permohonan,
@@ -70,6 +77,8 @@ class PermohonanResource extends JsonResource
             ],
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
+            'request_tte_date' => $this->whenNotNull($this->request_tte_date ? (method_exists($this->request_tte_date, 'toDateTimeString') ? $this->request_tte_date->toDateTimeString() : (is_string($this->request_tte_date) ? $this->request_tte_date : null)) : null),
+            'approved_date' => $this->whenNotNull($this->approved_date ? (method_exists($this->approved_date, 'toDateTimeString') ? $this->approved_date->toDateTimeString() : (is_string($this->approved_date) ? $this->approved_date : null)) : null),
         ];
     }
 }

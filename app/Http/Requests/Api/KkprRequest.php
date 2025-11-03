@@ -32,6 +32,10 @@ class KkprRequest extends FormRequest
             'var_nama_usaha' => 'string|max:255',
 
             'text_alamat_usaha' => 'string|required',
+            'var_provinsi' => 'string|max:255|nullable',
+            'var_kabupaten' => 'string|max:255',
+            'var_kecamatan' => 'string|max:255|nullable',
+            'var_kelurahan' => 'string|max:255|nullable',
 
             'var_nomor_permohonan' => 'string|max:255|nullable',
             'date_tanggal_permohonan' => 'nullable|date',
@@ -41,6 +45,8 @@ class KkprRequest extends FormRequest
             'var_url_lampiran' => 'string|max:255|nullable',
             'enum_status' => 'in:pending,approved,rejected',
             'pilihan_redaksi_ids' => 'array|nullable',
+
+            'json_geometry' => 'string|nullable',
 
             'var_npwp_pemohon_atau_badan_usaha' => 'string|max:255|nullable',
             'var_jenis_kegiatan' => 'string|max:255|nullable',
@@ -55,6 +61,12 @@ class KkprRequest extends FormRequest
             'var_rencana_teknis_bangunan_attachment' => 'string|max:255|nullable',
             'var_ptp_kkpr_nonberusaha_attachment' => 'string|max:255|nullable',
             'var_akta_pendirian_badan_attachment' => 'string|max:255|nullable',
+
+            'user_id' => 'integer|nullable|exists:users,id',
+            'user_request_tte_id' => 'integer|nullable|exists:users,id',
+            'request_tte_date' => 'nullable|date',
+            'approved_date' => 'nullable|date',
+            'var_penandatangan' => 'string|max:255|nullable',
         ];
 
         // Jika methodnya POST (create), tambahkan aturan 'required'
@@ -75,6 +87,12 @@ class KkprRequest extends FormRequest
             $rules['text_alamat'] = 'sometimes|' . $rules['text_alamat'];
             $rules['var_nama_usaha'] = 'sometimes|' . $rules['var_nama_usaha'];
             $rules['text_alamat_usaha'] = 'sometimes|' . $rules['text_alamat_usaha'];
+
+            $rules['user_id'] = 'sometimes|' . $rules['user_id'];
+            $rules['user_request_tte_id'] = 'sometimes|' . $rules['user_request_tte_id'];
+            $rules['request_tte_date'] = 'sometimes|' . $rules['request_tte_date'];
+            $rules['approved_date'] = 'sometimes|' . $rules['approved_date'];
+            $rules['var_penandatangan'] = 'sometimes|' . $rules['var_penandatangan'];
         }
 
         return $rules;
@@ -104,6 +122,17 @@ class KkprRequest extends FormRequest
             'text_alamat_usaha.string' => 'text_alamat_usaha harus berupa string.',
             'text_alamat_usaha.required' => 'text_alamat_usaha harus diisi.',
 
+            'var_provinsi.string' => 'var_provinsi harus berupa string.',
+            'var_provinsi.max' => 'var_provinsi tidak boleh lebih dari 255 karakter.',
+            'var_kabupaten.string' => 'var_kabupaten harus berupa string.',
+            'var_kabupaten.max' => 'var_kabupaten tidak boleh lebih dari 255 karakter.',
+            'var_kecamatan.string' => 'var_kecamatan harus berupa string.',
+            'var_kecamatan.max' => 'var_kecamatan tidak boleh lebih dari 255 karakter.',
+            'var_kelurahan.string' => 'var_kelurahan harus berupa string.',
+            'var_kelurahan.max' => 'var_kelurahan tidak boleh lebih dari 255 karakter.',
+
+            'json_geometry.string' => 'json_geometry harus berupa string.',
+
             'var_nomor_permohonan.string' => 'var_nomor_permohonan harus berupa string.',
             'var_nomor_permohonan.max' => 'var_nomor_permohonan tidak boleh lebih dari 255 karakter.',
             'var_nomor_pengesahan.string' => 'var_nomor_pengesahan harus berupa string.',
@@ -114,6 +143,16 @@ class KkprRequest extends FormRequest
             'enum_status.in' => 'Pilihan enum_status tidak valid.',
             'pilihan_redaksi_ids.array' => 'pilihan_redaksi_ids harus berupa array.',
             'pilihan_redaksi_ids.nullable' => 'pilihan_redaksi_ids boleh diisi.',
+
+            'user_id.integer' => 'user_id harus berupa angka.',
+            'user_id.exists' => 'user_id tidak valid.',
+            'user_request_tte_id.integer' => 'user_request_tte_id harus berupa angka.',
+            'user_request_tte_id.exists' => 'user_request_tte_id tidak valid.',
+            'request_tte_date.date' => 'request_tte_date harus berupa tanggal.',
+            'approved_date.date' => 'approved_date harus berupa tanggal.',
+            'var_penandatangan.string' => 'var_penandatangan harus berupa string.',
+            'var_penandatangan.max' => 'var_penandatangan tidak boleh lebih dari 255 karakter.',
         ];
     }
 }
+

@@ -240,11 +240,11 @@ class PermohonanController extends Controller
         }
 
         if ($request->status === 'request_tte') {
-            $updateData['request_tte_by_id'] = Auth::user()->id;
+            $updateData['user_request_tte_id'] = Auth::user()->id;
             $updateData['request_tte_date'] = now();
             $this->generateDocuments($permohonan);
         } else if ($request->status === 'rejected') {
-            $updateData['request_tte_by_id'] = null;
+            $updateData['user_request_tte_id'] = null;
             $updateData['request_tte_date'] = null;
         } else if ($request->status === 'approved') {
             $updateData['approved_date'] = now();

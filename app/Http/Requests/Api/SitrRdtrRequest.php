@@ -50,10 +50,15 @@ class SitrRdtrRequest extends FormRequest
             'var_url_lampiran' => 'string|max:255|nullable',
             'enum_status' => 'in:pending,approved,rejected',
             'pilihan_redaksi_ids' => 'array|nullable',
+
+            'user_id' => 'integer|nullable|exists:users,id',
+            'user_request_tte_id' => 'integer|nullable|exists:users,id',
+            'request_tte_date' => 'nullable|date',
+            'approved_date' => 'nullable|date',
+            'var_penandatangan' => 'string|max:255|nullable',
         ];
 
         // Jika methodnya POST (create), tambahkan aturan 'required'
-        // if ($this->isMethod('POST')) {
         if ($request->method() === 'POST') {
             $rules['var_nama'] .= '|required';
             $rules['text_alamat'] .= '|required';
@@ -62,7 +67,6 @@ class SitrRdtrRequest extends FormRequest
         }
 
         // Jika methodnya PUT atau PATCH (update), gunakan 'sometimes'
-        // if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
         if ($request->method() === 'PUT' || $request->method() === 'PATCH') {
             // 'sometimes' berarti: jika field ini dikirim, maka validasi
             // 'required' harus dipenuhi. Jika tidak dikirim, abaikan saja.
@@ -70,6 +74,11 @@ class SitrRdtrRequest extends FormRequest
             $rules['text_alamat'] = 'sometimes|' . $rules['text_alamat'];
             $rules['var_nama_usaha'] = 'sometimes|' . $rules['var_nama_usaha'];
             $rules['text_alamat_usaha'] = 'sometimes|' . $rules['text_alamat_usaha'];
+            $rules['user_id'] = 'sometimes|' . $rules['user_id'];
+            $rules['user_request_tte_id'] = 'sometimes|' . $rules['user_request_tte_id'];
+            $rules['request_tte_date'] = 'sometimes|' . $rules['request_tte_date'];
+            $rules['approved_date'] = 'sometimes|' . $rules['approved_date'];
+            $rules['var_penandatangan'] = 'sometimes|' . $rules['var_penandatangan'];
         }
 
         return $rules;
@@ -125,6 +134,15 @@ class SitrRdtrRequest extends FormRequest
             'enum_status.in' => 'Pilihan enum_status tidak valid.',
             'pilihan_redaksi_ids.array' => 'pilihan_redaksi_ids harus berupa array.',
             'pilihan_redaksi_ids.nullable' => 'pilihan_redaksi_ids boleh diisi.',
+
+            'user_id.integer' => 'user_id harus berupa angka.',
+            'user_id.exists' => 'user_id tidak valid.',
+            'user_request_tte_id.integer' => 'user_request_tte_id harus berupa angka.',
+            'user_request_tte_id.exists' => 'user_request_tte_id tidak valid.',
+            'request_tte_date.date' => 'request_tte_date harus berupa tanggal.',
+            'approved_date.date' => 'approved_date harus berupa tanggal.',
+            'var_penandatangan.string' => 'var_penandatangan harus berupa string.',
+            'var_penandatangan.max' => 'var_penandatangan tidak boleh lebih dari 255 karakter.',
         ];
     }
 }
