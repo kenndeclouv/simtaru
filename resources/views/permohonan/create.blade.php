@@ -11,36 +11,27 @@
         $(document).ready(function() {
             $('.select2').select2();
 
-            // 1. Siapkan "bendera" penanda. Awalnya 'false' (bersih).
             let isFormDirty = false;
             const formId = '#permohonanForm';
 
-            // 2. Jika ada input, select, atau textarea di dalam form yang berubah,
-            //    langsung ubah benderanya jadi 'true' (kotor).
-            //    Selector ':input' akan menargetkan semua jenis input form.
             $(formId).find(':input').on('change', function() {
                 isFormDirty = true;
             });
 
-            // 3. Saat form di-submit, kita nonaktifkan pengecekan.
-            //    Ini PENTING biar notifnya nggak muncul pas submit.
             $(formId).on('submit', function() {
                 $(window).off('beforeunload');
             });
 
-            // 4. Sekarang, event 'beforeunload' hanya akan jalan
-            //    jika benderanya 'true' (form sudah pernah diubah).
             $(window).on('beforeunload', function(e) {
                 if (isFormDirty) {
-                    // Baris ini diperlukan untuk menampilkan prompt konfirmasi di browser modern
+
                     e.preventDefault();
-                    e.returnValue = ''; // Beberapa browser lama butuh ini
-                    return ''; // Beberapa browser lain butuh ini
+                    e.returnValue = '';
+                    return '';
                 }
             });
         });
     </script>
-    {{-- @if ($type == 'sitr/rdtr') --}}
     <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
     <script>
         const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
@@ -59,7 +50,7 @@
             $select.html('<option value="">Memuat...</option>').prop('disabled', true);
             try {
                 const res = await $.getJSON(url);
-                // Correction: API response is {success: true, data: [...], message: ""}
+
                 let options = `<option value="">${placeholder}</option>`;
                 if (res && res.data && Array.isArray(res.data)) {
                     res.data.forEach(item => {
@@ -268,14 +259,14 @@
                     if (geojson && geojson.features && geojson.features.length > 0) {
                         clearMap();
 
-                        // Ambil feature pertama dan masukkan ke hidden input
+
                         const firstFeature = geojson.features[0];
                         $('#json_geometry').val(JSON.stringify(firstFeature));
 
-                        // Tampilkan semua feature di peta untuk preview
+
                         map.data.addGeoJson(geojson);
 
-                        // Zoom ke area KML
+
                         const bounds = new google.maps.LatLngBounds();
                         map.data.forEach(feature => {
                             feature.getGeometry().forEachLatLng(latlng => bounds.extend(
@@ -284,7 +275,7 @@
                         map.fitBounds(bounds);
                     } else {
                         alert('Berkas KML tidak valid atau tidak berisi data koordinat.');
-                        $(this).val(''); // Reset input file jika error
+                        $(this).val('');
                     }
                 };
                 reader.readAsText(file);
@@ -292,7 +283,6 @@
 
         }, 500);
     </script>
-    {{-- @endif --}}
 
     @if ($type == 'kkpr')
         <script>
@@ -307,15 +297,15 @@
 
                     if (!file) return;
 
-                    // Reset status
+
                     targetHiddenInput.val('');
                     statusDiv.html('<span class="text-warning">Mengunggah...</span>');
 
-                    // Siapkan data untuk dikirim ke API
+
                     const formData = new FormData();
                     formData.append('attachment', file);
 
-                    // Kirim file ke API pakai Fetch API
+
                     fetch('{{ route('api.attachments.store') }}', {
                             method: 'POST',
                             headers: {
@@ -326,7 +316,7 @@
                         })
                         .then(response => {
                             if (!response.ok) {
-                                // Tangani error dari server (misal validasi gagal)
+
                                 return response.json().then(err => {
                                     throw err;
                                 });
@@ -335,9 +325,9 @@
                         })
                         .then(data => {
                             if (data.success) {
-                                // Jika sukses, isi input hidden dengan path dari API
+
                                 targetHiddenInput.val(data.path);
-                                // Tampilkan pesan sukses dan nama file
+
                                 statusDiv.html(
                                     `<span class="text-success">✓ Berhasil diunggah: ${file.name}</span>`
                                 );
@@ -345,10 +335,10 @@
                         })
                         .catch(error => {
                             console.error('Upload error:', error);
-                            // Tampilkan pesan error
+
                             let errorMessage = 'Gagal mengunggah file. Coba lagi.';
                             if (error.errors && error.errors.attachment) {
-                                errorMessage = error.errors.attachment[0]; // Ambil pesan error validasi
+                                errorMessage = error.errors.attachment[0];
                             }
                             statusDiv.html(`<span class="text-danger">✗ ${errorMessage}</span>`);
                         });
@@ -360,10 +350,10 @@
 
 @section('content')
     <div class="container-xxl flex-grow-1 container-p-y">
-        {{-- <x-breadcrumb :items="[
+        <x-breadcrumb :items="[
             ['text' => 'Permohonan ' . strtoupper($type), 'url' => route('permohonan.index') . '?type=' . $type],
             ['text' => 'Tambah Permohonan'],
-        ]" /> --}}
+        ]" />
 
         <form action="{{ route('permohonan.store') }}" method="POST" enctype="multipart/form-data" id="permohonanForm">
             @csrf
@@ -405,7 +395,6 @@
                                     @errorFeedback('text_alamat')
                                 </div>
                             </div>
-                            {{-- @if ($type == 'sitr/rdtr') --}}
                             <div class="location-group">
                                 <div class="mb-4 row">
                                     <label for="var_provinsi" class="col-sm-3 col-form-label">Provinsi</label>
@@ -454,7 +443,6 @@
                                     </div>
                                 </div>
                             </div>
-                            {{-- @endif --}}
 
                             <div class="mb-4 row">
                                 <label for="var_email" class="col-sm-3 col-form-label">Email</label>
@@ -475,17 +463,15 @@
                                     @errorFeedback('var_no_telp')
                                 </div>
                             </div>
-                            @if ($type == 'sitr/rdtr')
-                                <div class="mb-4 row">
-                                    <label for="var_no_ponsel" class="col-sm-3 col-form-label">No. Ponsel</label>
-                                    <div class="col-sm-9">
-                                        <input type="text" name="var_no_ponsel" id="var_no_ponsel"
-                                            class="form-control  @error('var_no_ponsel') is-invalid @enderror phone-mask"
-                                            value="{{ old('var_no_ponsel') }}" required>
-                                        @errorFeedback('var_no_ponsel')
-                                    </div>
+                            <div class="mb-4 row">
+                                <label for="var_no_ponsel" class="col-sm-3 col-form-label">No. Ponsel</label>
+                                <div class="col-sm-9">
+                                    <input type="text" name="var_no_ponsel" id="var_no_ponsel"
+                                        class="form-control  @error('var_no_ponsel') is-invalid @enderror phone-mask"
+                                        value="{{ old('var_no_ponsel') }}" required>
+                                    @errorFeedback('var_no_ponsel')
                                 </div>
-                            @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -504,43 +490,105 @@
                                     @errorFeedback('var_nama_usaha')
                                 </div>
                             </div>
-                            @if ($type == 'sitr/rdtr')
-                                <div class="mb-4 row">
-                                    <label for="var_bentuk_usaha" class="col-sm-3 col-form-label">Bentuk Badan</label>
-                                    <div class="col-sm-9">
-                                        <select name="var_bentuk_usaha" id="var_bentuk_usaha"
-                                            class="form-select select2 @error('var_bentuk_usaha') is-invalid @enderror"
-                                            required>
-                                            <option value="">-- Pilih Bentuk Usaha --</option>
-                                            <option value="Perorangan"
-                                                {{ old('var_bentuk_usaha') == 'Perorangan' ? 'selected' : '' }}>Perorangan
-                                            </option>
-                                            <option value="CV/UD"
-                                                {{ old('var_bentuk_usaha') == 'CV/UD' ? 'selected' : '' }}>
-                                                CV/UD</option>
-                                            <option value="PT"
-                                                {{ old('var_bentuk_usaha') == 'PT' ? 'selected' : '' }}>PT
-                                            </option>
-                                            <option value="BUMDES/BUMDESMa"
-                                                {{ old('var_bentuk_usaha') == 'BUMDES/BUMDESMa' ? 'selected' : '' }}>
-                                                BUMDES/BUMDESMa</option>
-                                            <option value="Yayasan"
-                                                {{ old('var_bentuk_usaha') == 'Yayasan' ? 'selected' : '' }}>
-                                                Yayasan</option>
-                                            <option value="Lainnya/Instansi"
-                                                {{ old('var_bentuk_usaha') == 'Lainnya/Instansi' ? 'selected' : '' }}>
-                                                Lainnya/Instansi</option>
-                                        </select>
-                                        @errorFeedback('var_bentuk_usaha')
-                                    </div>
+                            <div class="mb-4 row">
+                                <label for="var_bentuk_usaha" class="col-sm-3 col-form-label">Bentuk Badan</label>
+                                <div class="col-sm-9">
+                                    <select name="var_bentuk_usaha" id="var_bentuk_usaha"
+                                        class="form-select select2 @error('var_bentuk_usaha') is-invalid @enderror"
+                                        required>
+                                        <option value="">-- Pilih Bentuk Usaha --</option>
+                                        <option value="Perorangan"
+                                            {{ old('var_bentuk_usaha') == 'Perorangan' ? 'selected' : '' }}>Perorangan
+                                        </option>
+                                        <option value="CV/UD"
+                                            {{ old('var_bentuk_usaha') == 'CV/UD' ? 'selected' : '' }}>
+                                            CV/UD</option>
+                                        <option value="PT"
+                                            {{ old('var_bentuk_usaha') == 'PT' ? 'selected' : '' }}>PT
+                                        </option>
+                                        <option value="BUMDES/BUMDESMa"
+                                            {{ old('var_bentuk_usaha') == 'BUMDES/BUMDESMa' ? 'selected' : '' }}>
+                                            BUMDES/BUMDESMa</option>
+                                        <option value="Yayasan"
+                                            {{ old('var_bentuk_usaha') == 'Yayasan' ? 'selected' : '' }}>
+                                            Yayasan</option>
+                                        <option value="Lainnya/Instansi"
+                                            {{ old('var_bentuk_usaha') == 'Lainnya/Instansi' ? 'selected' : '' }}>
+                                            Lainnya/Instansi</option>
+                                    </select>
+                                    @errorFeedback('var_bentuk_usaha')
                                 </div>
-                            @endif
+                            </div>
                             <div class="mb-4 row">
                                 <label for="text_alamat_usaha" class="col-sm-3 col-form-label">Alamat yang dimohon</label>
                                 <div class="col-sm-9">
                                     <textarea name="text_alamat_usaha" id="text_alamat_usaha"
                                         class="form-control  @error('text_alamat_usaha') is-invalid @enderror" rows="3" required>{{ old('text_alamat_usaha') }}</textarea>
                                     @errorFeedback('text_alamat_usaha')
+                                </div>
+                            </div>
+                            <div class="location-group">
+                                <div class="mb-4 row d-none">
+                                    <label for="var_provinsi_usaha" class="col-sm-3 col-form-label">Provinsi</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_provinsi_usaha" id="var_provinsi_usaha"
+                                            class="form-select select2 provinsi @error('var_provinsi_usaha') is-invalid @enderror">
+                                            <option value="">-- Pilih Provinsi --</option>
+                                        </select>
+                                        @errorFeedback('var_provinsi_usaha')
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 row d-none">
+                                    <label for="var_kabupaten_usaha" class="col-sm-3 col-form-label">Kabupaten</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kabupaten_usaha" id="var_kabupaten_usaha"
+                                            class="form-select select2 kabupaten @error('var_kabupaten_usaha') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kabupaten --</option>
+                                        </select>
+                                        @errorFeedback('var_kabupaten_usaha')
+                                    </div>
+                                </div>
+                                <div class="mb-4 row">
+                                    <label for="var_kecamatan_usaha" class="col-sm-3 col-form-label">Kecamatan</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kecamatan_usaha" id="var_kecamatan_usaha"
+                                            class="form-select select2 kecamatan @error('var_kecamatan_usaha') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kecamatan --</option>
+                                        </select>
+                                        @errorFeedback('var_kecamatan_usaha')
+                                    </div>
+                                </div>
+                                <div class="mb-4 row">
+                                    <label for="var_kelurahan_usaha" class="col-sm-3 col-form-label">Kelurahan</label>
+                                    <div class="col-sm-9">
+                                        <select name="var_kelurahan_usaha" id="var_kelurahan_usaha"
+                                            class="form-select select2 kelurahan @error('var_kelurahan_usaha') is-invalid @enderror"
+                                            disabled>
+                                            <option value="">-- Pilih Kelurahan --</option>
+                                        </select>
+                                        @errorFeedback('var_kelurahan_usaha')
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-4 row">
+                                <label for="var_rencana_usaha" class="col-sm-3 col-form-label">Rencana Kegiatan</label>
+                                <div class="col-sm-9">
+                                    <textarea name="var_rencana_usaha" id="var_rencana_usaha"
+                                        class="form-control  @error('var_rencana_usaha') is-invalid @enderror" required>{{ old('var_rencana_usaha') }}</textarea>
+                                    @errorFeedback('var_rencana_usaha')
+                                </div>
+                            </div>
+
+                            <div class="mb-4 row">
+                                <label for="dec_rencana_luas_lantai" class="col-12 col-form-label">Rencana luas lahan yang dimohon (m2)</label>
+                                <div class="col-12">
+                                    <input type="number" name="dec_rencana_luas_lantai" id="dec_rencana_luas_lantai"
+                                        class="form-control  @error('dec_rencana_luas_lantai') is-invalid @enderror"
+                                        value="{{ old('dec_rencana_luas_lantai') }}" required>
+                                    @errorFeedback('dec_rencana_luas_lantai')
                                 </div>
                             </div>
                             @if ($type == 'kkpr')
@@ -562,72 +610,6 @@
                                             class="form-control  @error('var_jenis_kegiatan') is-invalid @enderror"
                                             rows="3" required>{{ old('var_jenis_kegiatan') }}</input>
                                         @errorFeedback('var_jenis_kegiatan')
-                                    </div>
-                                </div>
-                            @endif
-                            @if ($type == 'sitr/rdtr')
-                                <div class="location-group">
-                                    <div class="mb-4 row d-none">
-                                        <label for="var_provinsi_usaha" class="col-sm-3 col-form-label">Provinsi</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_provinsi_usaha" id="var_provinsi_usaha"
-                                                class="form-select select2 provinsi @error('var_provinsi_usaha') is-invalid @enderror">
-                                                <option value="">-- Pilih Provinsi --</option>
-                                            </select>
-                                            @errorFeedback('var_provinsi_usaha')
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4 row d-none">
-                                        <label for="var_kabupaten_usaha" class="col-sm-3 col-form-label">Kabupaten</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kabupaten_usaha" id="var_kabupaten_usaha"
-                                                class="form-select select2 kabupaten @error('var_kabupaten_usaha') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kabupaten --</option>
-                                            </select>
-                                            @errorFeedback('var_kabupaten_usaha')
-                                        </div>
-                                    </div>
-                                    <div class="mb-4 row">
-                                        <label for="var_kecamatan_usaha" class="col-sm-3 col-form-label">Kecamatan</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kecamatan_usaha" id="var_kecamatan_usaha"
-                                                class="form-select select2 kecamatan @error('var_kecamatan_usaha') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kecamatan --</option>
-                                            </select>
-                                            @errorFeedback('var_kecamatan_usaha')
-                                        </div>
-                                    </div>
-                                    <div class="mb-4 row">
-                                        <label for="var_kelurahan_usaha" class="col-sm-3 col-form-label">Kelurahan</label>
-                                        <div class="col-sm-9">
-                                            <select name="var_kelurahan_usaha" id="var_kelurahan_usaha"
-                                                class="form-select select2 kelurahan @error('var_kelurahan_usaha') is-invalid @enderror"
-                                                disabled>
-                                                <option value="">-- Pilih Kelurahan --</option>
-                                            </select>
-                                            @errorFeedback('var_kelurahan_usaha')
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mb-4 row">
-                                    <label for="var_rencana_usaha" class="col-sm-3 col-form-label">Rencana Kegiatan</label>
-                                    <div class="col-sm-9">
-                                        <textarea name="var_rencana_usaha" id="var_rencana_usaha"
-                                            class="form-control  @error('var_rencana_usaha') is-invalid @enderror" required>{{ old('var_rencana_usaha') }}</textarea>
-                                        @errorFeedback('var_rencana_usaha')
-                                    </div>
-                                </div>
-
-                                <div class="mb-4 row">
-                                    <label for="dec_rencana_luas_lantai" class="col-sm-3 col-form-label">Rencana luas lahan yang dimohon (m2)</label>
-                                    <div class="col-sm-9">
-                                        <input type="number" name="dec_rencana_luas_lantai" id="dec_rencana_luas_lantai"
-                                            class="form-control  @error('dec_rencana_luas_lantai') is-invalid @enderror"
-                                            value="{{ old('dec_rencana_luas_lantai') }}" required>
-                                        @errorFeedback('dec_rencana_luas_lantai')
                                     </div>
                                 </div>
                             @endif

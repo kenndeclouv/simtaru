@@ -31,13 +31,13 @@ Route::group(['prefix' => 'v1'], function () {
 
         Route::get('/permohonan/tte-queue', [PermohonanAdminController::class, 'tteQueue'])
               ->name('api.permohonan.tteQueue');
-    });
 
+        Route::post('/attachments', [AttachmentController::class, 'store'])->name('api.attachments.store');
+    });
     Route::prefix('location')->group(function () {
         Route::get('/provinces', [LocationController::class, 'provinces']);
         Route::get('/regencies/{provinceId}', [LocationController::class, 'regencies']);
         Route::get('/districts/{regencyId}', [LocationController::class, 'districts']);
         Route::get('/villages/{districtId}', [LocationController::class, 'villages']);
     });
-    Route::post('/attachments', [AttachmentController::class, 'store'])->name('api.attachments.store');
 });
