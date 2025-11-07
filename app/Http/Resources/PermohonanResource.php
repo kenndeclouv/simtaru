@@ -11,12 +11,8 @@ class PermohonanResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'user' => $this->when(!empty($this->user_id), function () {
-                return new UserResource($this->whenLoaded('user') ?? $this->user);
-            }),
-            'user_request_tte' => $this->when(!empty($this->user_request_tte_id), function () {
-                return new UserResource($this->whenLoaded('userRequestTteBy') ?? $this->userRequestTteBy);
-            }),
+            'user' => new UserResource($this->whenLoaded('user')),
+            'user_request_tte' => new UserResource($this->whenLoaded('userRequestTteBy')),
             'penandatangan' => $this->whenNotNull($this->var_penandatangan),
             'tipe_permohonan' => $this->var_type,
             'status' => $this->enum_status,
@@ -62,7 +58,9 @@ class PermohonanResource extends JsonResource
             ],
             'geometri' => $this->whenNotNull(json_decode($this->json_geometry)),
 
-            'template_dokumen' => TemplateDocResource::collection($this->whenLoaded('templateDocs')),
+            'template_dokumen' => TemplateDocResource::collection(
+                $this->whenLoaded('permohonanTemplateDocs')
+            ),
             'attachment' => [
                 'fotocopy_ktp' => $this->whenNotNull($this->var_fotocopy_ktp_attachment),
                 'fotocopy_npwp' => $this->whenNotNull($this->var_fotocopy_npwp_attachment),

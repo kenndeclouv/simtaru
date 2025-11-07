@@ -21,10 +21,21 @@ trait ManagesPermohonan
     {
         $user = Auth::user();
 
-        $query = Permohonan::with(['permohonanTemplateDocs.templateDocs', 'user', 'userRequestTteBy'])
+        // TAMBAHIN SEMUA RELASI LOKASI + PLACEHOLDERS DI SINI
+        $query = Permohonan::with([
+            'permohonanTemplateDocs.templateDocs.placeholders',
+            'user',
+            'userRequestTteBy',
+            'province',
+            'regency',
+            'district',
+            'village',
+            'districtUsaha',
+            'villageUsaha'
+        ])
             ->where('var_type', $this->permohonanType);
 
-        // Imitate the permission in PermohonanController
+        // ... (sisa logic permission kamu udah bener) ...
         if (!$user->can('view any permohonan') && $user->can('view permohonan')) {
             $query->where('user_id', $user->id);
         } else if (!$user->can('view any permohonan') && !$user->can('view permohonan')) {
@@ -106,7 +117,19 @@ trait ManagesPermohonan
             }
         }
 
-        return (new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs')))
+        // Load relasi SEBELUM return
+        $permohonan->load(
+            'permohonanTemplateDocs.templateDocs.placeholders',
+            'user',
+            'userRequestTteBy',
+            'province',
+            'regency',
+            'district',
+            'village',
+            'districtUsaha',
+            'villageUsaha'
+        );
+        return (new PermohonanResource($permohonan))
             ->additional(['message' => 'Permohonan berhasil dibuat.'])
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
@@ -121,7 +144,19 @@ trait ManagesPermohonan
         if ($user->cannot('view', $permohonan)) {
             abort(403, 'Unauthorized.');
         }
-        return new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs'));
+        // Load relasi SEBELUM return
+        $permohonan->load(
+            'permohonanTemplateDocs.templateDocs.placeholders',
+            'user',
+            'userRequestTteBy',
+            'province',
+            'regency',
+            'district',
+            'village',
+            'districtUsaha',
+            'villageUsaha'
+        );
+        return new PermohonanResource($permohonan);
     }
 
     public function update(FormRequest $request, Permohonan $permohonan)
@@ -184,7 +219,19 @@ trait ManagesPermohonan
             }
         }
 
-        return (new PermohonanResource($permohonan->load('permohonanTemplateDocs.templateDocs')))
+        // Load relasi SEBELUM return
+        $permohonan->load(
+            'permohonanTemplateDocs.templateDocs.placeholders',
+            'user',
+            'userRequestTteBy',
+            'province',
+            'regency',
+            'district',
+            'village',
+            'districtUsaha',
+            'villageUsaha'
+        );
+        return (new PermohonanResource($permohonan))
             ->additional(['message' => 'Permohonan berhasil diperbarui.']);
     }
 
@@ -218,8 +265,18 @@ trait ManagesPermohonan
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
+        // Load relasi lokasi SEBELUM generate
+        $permohonan->load(
+            'province',
+            'regency',
+            'district',
+            'village',
+            'districtUsaha',
+            'villageUsaha'
+        );
+
         $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()
-            ->with('templateDocs')
+            ->with('templateDocs.placeholders')
             ->get();
 
         // 1. SIAPKAN DATA SIMPEL

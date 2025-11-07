@@ -15,22 +15,21 @@ class TemplateDocResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $template = $this->templateDocs;
+
+        if (!$template) {
+            return [];
+        }
+
         return [
-            'id' => $this->id,
-            'nama_dokumen' => $this->var_nama,
-            'path_template' => $this->var_file_path
-                ? asset('storage/' . ltrim($this->var_file_path, '/'))
+            'id' => $template->id,
+
+            'nama_dokumen' => $template->var_nama,
+            'path_template' => $template->var_file_path
+                ? asset('storage/' . ltrim($template->var_file_path, '/'))
                 : null,
 
-            'path_hasil_generate' => $this->whenPivotLoaded('permohonans_template_docs', function () {
-                return $this->pivot->var_generated_file_path
-                    ? asset('storage/' . ltrim($this->pivot->var_generated_file_path, '/'))
-                    : null;
-            }),
-
-            'placeholders' => $this->whenLoaded('placeholders', function () {
-                return $this->placeholders->pluck('var_key');
-            }),
+            'path_hasil_generate' => $this->var_generated_file_path
         ];
     }
 }

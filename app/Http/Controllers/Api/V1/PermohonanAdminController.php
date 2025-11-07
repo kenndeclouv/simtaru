@@ -13,7 +13,17 @@ class PermohonanAdminController extends Controller
         $type = $request->query('type');
 
         $query = Permohonan::where('enum_status', 'request_tte')
-                 ->with('permohonanTemplateDocs.templateDocs');
+                 ->with([
+                     'permohonanTemplateDocs.templateDocs',
+                     'user',
+                     'userRequestTteBy',
+                     'province',
+                     'regency',
+                     'district',
+                     'village',
+                     'districtUsaha',
+                     'villageUsaha',
+                 ]);
 
         $query->when($type, function ($q, $type) {
             return $q->where('var_type', $type);
