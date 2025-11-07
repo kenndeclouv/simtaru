@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\TemplateProcessor;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\Settings;
+use Illuminate\Support\Str;
 use Yajra\DataTables\Facades\DataTables;
 use Exception;
 use geoPHP;
@@ -27,7 +30,6 @@ class PermohonanController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-
         $this->authorizeResource(Permohonan::class, 'permohonan');
     }
 
@@ -236,13 +238,18 @@ class PermohonanController extends Controller
         ];
 
         if ($lampiranName) {
-            $updateData['var_lampiran'] = $lampiranName;
+
+            $updateData['var_lampiran'] = 'uploads/' . $lampiranName;
         }
 
         if ($request->status == 'request_tte') {
             $updateData['user_request_tte_id'] = Auth::user()->id;
             $updateData['request_tte_date'] = now();
+
+
+
             $this->generateDocuments($permohonan);
+
         } else if ($request->status == 'rejected') {
             $updateData['user_request_tte_id'] = null;
             $updateData['request_tte_date'] = null;
@@ -255,9 +262,31 @@ class PermohonanController extends Controller
         return redirect()->back()->with('success', 'Status permohonan berhasil diubah.');
     }
 
+
     public function generateDocuments(Permohonan $permohonan)
     {
         $this->authorize('update', $permohonan);
+
+
+
+        if (!class_exists('\Dompdf\Dompdf')) {
+            Log::error('DomPDF tidak ditemukan! Jalankan "composer require dompdf/dompdf"');
+            return redirect()->back()->with('error', 'Gagal generate: PDF renderer (DomPDF) tidak ditemukan.');
+        }
+
+        if (!class_exists('\PhpOffice\PhpWord\PhpWord')) {
+            Log::error('PhpWord tidak ditemukan! Jalankan "composer require phpoffice/phpword"');
+            return redirect()->back()->with('error', 'Gagal generate: PDF renderer (PhpWord) tidak ditemukan.');
+        }
+
+
+        Settings::setPdfRendererName(Settings::PDF_RENDERER_DOMPDF);
+
+        Settings::setPdfRendererPath(base_path('vendor/dompdf/dompdf'));
+
+
+
+        $permohonan->load('province', 'regency', 'district', 'village', 'districtUsaha', 'villageUsaha');
 
         $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()->with('templateDocs')->get();
 
@@ -296,6 +325,10 @@ class PermohonanController extends Controller
                 continue;
             }
 
+
+            $tempDocxFile = '';
+            $tempPdfFile = '';
+
             try {
                 $templatePath = Storage::disk('public')->path($template->var_file_path);
 
@@ -308,30 +341,55 @@ class PermohonanController extends Controller
 
 
                 $templateProcessor->setValues($replacementData);
-
-
                 $templateProcessor->cloneRowAndSetValues('koor_no', $tableValues);
 
 
-                $generatedDir = "generated_documents/{$permohonan->id}";
-                $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.docx';
-                $newFilePath = "{$generatedDir}/{$newFileName}";
+                $tempDocxFile = tempnam(sys_get_temp_dir(), 'phpword_') . '.docx';
+                $templateProcessor->saveAs($tempDocxFile);
 
-                $tempFile = tempnam(sys_get_temp_dir(), 'phpword');
-                $templateProcessor->saveAs($tempFile);
-                Storage::disk('public')->put($newFilePath, file_get_contents($tempFile));
-                unlink($tempFile);
+                $phpWord = IOFactory::load($tempDocxFile);
+
+                $tempPdfFile = Str::beforeLast($tempDocxFile, '.docx') . '.pdf';
+
+                $pdfWriter = IOFactory::createWriter($phpWord, 'PDF');
+                $pdfWriter->save($tempPdfFile);
+
+                if (!file_exists($tempPdfFile)) {
+                    throw new Exception('Konversi PDF (via DomPDF) gagal, file output tidak ditemukan.');
+                }
+
+
+                $generatedDir = "generated_documents/{$permohonan->id}";
+
+                $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.pdf';
+                $newPdfPath = "{$generatedDir}/{$newFileName}";
+
+
+                Storage::disk('public')->put($newPdfPath, file_get_contents($tempPdfFile));
+
 
                 $permohonanTemplateDoc->update([
-                    'var_generated_file_path' => $newFilePath
+                    'var_generated_file_path' => $newPdfPath
                 ]);
+
             } catch (Exception $e) {
-                Log::error('Gagal generate dokumen: ' . $e->getMessage());
-                return redirect()->back()->with('error', 'Gagal generate: ' . $template->var_nama . ' - ' . $e->getMessage());
+                Log::error('Gagal generate dokumen (ID: ' . $permohonanTemplateDoc->id . '): ' . $e->getMessage());
+
+
+
+            } finally {
+
+                if (file_exists($tempDocxFile)) {
+                    @unlink($tempDocxFile);
+                }
+                if (file_exists($tempPdfFile)) {
+                    @unlink($tempPdfFile);
+                }
             }
         }
 
-        return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate!');
+
+        return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate dan dikonversi ke PDF! (Cek hasilnya, mungkin berantakan)');
     }
 
     public function downloadKml(Permohonan $permohonan)
