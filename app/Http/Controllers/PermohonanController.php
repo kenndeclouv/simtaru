@@ -239,14 +239,14 @@ class PermohonanController extends Controller
             $updateData['var_lampiran'] = $lampiranName;
         }
 
-        if ($request->status === 'request_tte') {
+        if ($request->status == 'request_tte') {
             $updateData['user_request_tte_id'] = Auth::user()->id;
             $updateData['request_tte_date'] = now();
             $this->generateDocuments($permohonan);
-        } else if ($request->status === 'rejected') {
+        } else if ($request->status == 'rejected') {
             $updateData['user_request_tte_id'] = null;
             $updateData['request_tte_date'] = null;
-        } else if ($request->status === 'approved') {
+        } else if ($request->status == 'approved') {
             $updateData['approved_date'] = now();
         }
 

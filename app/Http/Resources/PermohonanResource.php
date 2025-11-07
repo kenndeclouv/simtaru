@@ -75,8 +75,8 @@ class PermohonanResource extends JsonResource
             ],
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
-            'request_tte_date' => $this->whenNotNull($this->request_tte_date ? (method_exists($this->request_tte_date, 'toDateTimeString') ? $this->request_tte_date->toDateTimeString() : (is_string($this->request_tte_date) ? $this->request_tte_date : null)) : null),
-            'approved_date' => $this->whenNotNull($this->approved_date ? (method_exists($this->approved_date, 'toDateTimeString') ? $this->approved_date->toDateTimeString() : (is_string($this->approved_date) ? $this->approved_date : null)) : null),
+            'request_tte_date' => $this->request_tte_date ? (string) $this->request_tte_date : null,
+            'approved_date' => $this->approved_date ? (string) $this->approved_date : null,
         ];
     }
 }

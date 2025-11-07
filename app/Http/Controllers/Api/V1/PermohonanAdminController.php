@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PermohonanResource;
 use App\Models\Permohonan;
 use Illuminate\Http\Request;
+
 class PermohonanAdminController extends Controller
 {
     public function tteQueue(Request $request)
@@ -14,15 +15,15 @@ class PermohonanAdminController extends Controller
 
         $query = Permohonan::where('enum_status', 'request_tte')
                  ->with([
-                     'permohonanTemplateDocs.templateDocs',
-                     'user',
-                     'userRequestTteBy',
-                     'province',
-                     'regency',
-                     'district',
-                     'village',
-                     'districtUsaha',
-                     'villageUsaha',
+                    'permohonanTemplateDocs.templateDocs.placeholders',
+                    'user',
+                    'userRequestTteBy',
+                    'province',
+                    'regency',
+                    'district',
+                    'village',
+                    'districtUsaha',
+                    'villageUsaha'
                  ]);
 
         $query->when($type, function ($q, $type) {
