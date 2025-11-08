@@ -2,11 +2,12 @@
 @section('title', 'Detail Permohonan ' . strtoupper($permohonan->var_type))
 
 @section('page-script')
-
-    <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script>
+    {{-- HAPUS INI: <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script> --}}
+    {{-- Kita nggak butuh library tambahan buat PDF --}}
 @endsection
 
 @section('content')
+    {{-- ... (kode view 'show.blade.php' kamu) ... --}}
     <div class="container-xxl flex-grow-1 container-p-y">
         <x-breadcrumb :items="[['text' => 'Permohonan ' . strtoupper($permohonan->var_type), 'url' => route('permohonan.index') . '?type=' . $permohonan->var_type], ['text' => 'Detail']]" />
 
@@ -374,7 +375,8 @@
                                                         <button type="button"
                                                             class="btn btn-sm btn-outline-secondary preview-btn"
                                                             data-bs-toggle="modal" data-bs-target="#previewModal"
-                                                            data-file-url="{{ $doc->var_generated_file_path }}">
+                                                            data-file-url="{{ $doc->var_generated_file_path }}"
+                                                            data-file-name="{{ $doc->var_nama }}">
                                                             <i class="bx bx-show me-1"></i> Preview
                                                         </button>
                                                     </div>
@@ -395,21 +397,79 @@
                     </div>
                 </div>
 
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="fw-bold mt-4"># Timeline Histori</h5>
+                        <ul class="list-group">
+                            @forelse ($permohonan->activities->sortByDesc('created_at') as $activity)
+                                <li class="list-group-item border-0 border-bottom rounded-0 py-3">
+                                    <div class="d-flex justify-content-between">
+
+                                        <small class="text-muted text-nowrap me-5">
+                                            {{ $activity->created_at->format('d M Y, H:i') }}
+                                        </small>
+                                        <div class="w-100">
+                                            <p class="mb-1 fw-bold">
+                                                {{ $activity->description }}
+                                            </p>
+                                            @if ($activity->event === 'updated' && $activity->properties->has('old'))
+                                                <div class="bg-light p-2 rounded small mt-2">
+                                                    <ul class="list-unstyled mb-0">
+                                                        @foreach ($activity->properties['attributes'] as $key => $newValue)
+                                                            {{-- Skip timestamp dan field yg gak penting --}}
+                                                            @continue(in_array($key, ['updated_at', 'request_tte_date', 'approved_date']))
+
+                                                            @if (isset($activity->properties['old'][$key]))
+                                                                <li class="mb-1">
+                                                                    <i class="ti ti-edit text-warning me-1"></i>
+                                                                    Ubah <strong>{{ ucwords(str_replace(['var_', 'enum_', 'text_'], '', str_replace('_', ' ', $key))) }}</strong>:
+                                                                    <br>
+                                                                    <span class="text-decoration-line-through text-muted ms-4">{{ $activity->properties['old'][$key] ?: '-' }}</span>
+                                                                    <i class="ti ti-arrow-right mx-1"></i>
+                                                                    <span class="text-success fw-bold">{{ $newValue ?: '-' }}</span>
+                                                                </li>
+                                                            @endif
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+                                            @endif
+                                            @if ($activity->getExtraProperty('catatan_penolakan'))
+                                                <div class="alert alert-warning p-2 mt-2 mb-0 small">
+                                                    <strong>Catatan:</strong> {{ $activity->getExtraProperty('catatan_penolakan') }}
+                                                </div>
+                                            @endif
+
+                                            <small class="text-muted d-block mt-1">
+                                                Oleh: {{ $activity->causer ? $activity->causer->name : 'Sistem' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </li>
+                            @empty
+                                <li class="list-group-item text-center text-muted fst-italic">
+                                    Belum ada histori aktivitas.
+                                </li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
     <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header mb-4">
+                <div class="modal-header">
                     <h5 class="modal-title" id="previewModalLabel">Document Preview</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    {{-- Konten preview akan dimuat di sini oleh JavaScript --}}
-                    <div id="modal-preview-content" class="overflow-hidden rounded" style="min-height: 400px;"></div>
+                <div class="modal-body p-0" style="height: 80vh;">
+                    <div id="modal-preview-content" class="h-100 w-100">
+
+                    </div>
                 </div>
-                <div class="modal-footer mt-4">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -419,26 +479,36 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const previewModal = document.getElementById('previewModal');
+            const modalTitle = document.getElementById('previewModalLabel');
+            const previewContainer = document.getElementById('modal-preview-content');
 
             previewModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
                 const fileUrl = button.getAttribute('data-file-url');
+                const fileName = button.getAttribute('data-file-name');
 
-                const previewContainer = document.getElementById('modal-preview-content');
+                modalTitle.textContent = 'Preview: ' + (fileName || 'Dokumen');
 
-                previewContainer.innerHTML = '<p class="text-center"><em>Loading preview...</em></p>';
+                previewContainer.innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                `;
 
-                fetch(fileUrl)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        docx.renderAsync(blob, previewContainer)
-                            .then(x => console.log("Preview berhasil dirender di modal."));
-                    })
-                    .catch(error => {
-                        console.error('Gagal memuat preview di modal:', error);
-                        previewContainer.innerHTML =
-                            '<p class="text-center text-danger">Gagal memuat file preview.</p>';
-                    });
+                setTimeout(() => {
+                     previewContainer.innerHTML = `
+                        <iframe src="${fileUrl}" width="100%" height="100%" style="border: none;" allowfullscreen>
+                            <p>Browser kamu tidak mendukung preview PDF.
+                            <a href="${fileUrl}" target="_blank">Download file</a> sebagai gantinya.</p>
+                        </iframe>
+                    `;
+                }, 300);
+            });
+
+            previewModal.addEventListener('hidden.bs.modal', function () {
+                previewContainer.innerHTML = '';
             });
         });
     </script>

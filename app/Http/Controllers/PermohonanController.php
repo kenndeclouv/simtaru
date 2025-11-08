@@ -25,6 +25,9 @@ use Yajra\DataTables\Facades\DataTables;
 use Exception;
 use geoPHP;
 
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+
 class PermohonanController extends Controller
 {
     public function __construct()
@@ -207,7 +210,7 @@ class PermohonanController extends Controller
 
     public function show($id)
     {
-        $permohonan = Permohonan::with('permohonanTemplateDocs.templateDocs')
+        $permohonan = Permohonan::with(['permohonanTemplateDocs.templateDocs', 'activities.causer'])
         ->findOrFail($id);
 
         return view('permohonan.show', [
@@ -225,6 +228,7 @@ class PermohonanController extends Controller
     {
         $this->authorize('approve', $permohonan);
 
+        // ... (kode lampiran kamu) ...
         $lampiranName = null;
         if ($request->hasFile('lampiran')) {
             $lampiran = $request->file('lampiran');
@@ -236,26 +240,45 @@ class PermohonanController extends Controller
             'enum_status' => $request->status,
             'text_catatan' => $request->catatan,
         ];
-
         if ($lampiranName) {
-
             $updateData['var_lampiran'] = 'uploads/' . $lampiranName;
         }
 
+        // --- TAMBAHIN LOG MANUAL DI SINI ---
         if ($request->status == 'request_tte') {
             $updateData['user_request_tte_id'] = Auth::user()->id;
             $updateData['request_tte_date'] = now();
 
-
-
             $this->generateDocuments($permohonan);
+
+            // LOGGING
+            activity()
+               ->on($permohonan) // Nempelin log ke permohonan ini
+               ->causedBy(Auth::user()) // Siapa yang ngelakuin
+               ->log('Mengajukan TTE dan men-generate dokumen PDF.'); // Pesannya
 
         } else if ($request->status == 'rejected') {
             $updateData['user_request_tte_id'] = null;
             $updateData['request_tte_date'] = null;
+
+            // LOGGING
+            activity()
+               ->on($permohonan)
+               ->causedBy(Auth::user())
+               // Bonus: simpen catatannya di log
+               ->withProperty('catatan_penolakan', $request->catatan)
+               ->log('Permohonan Ditolak.');
+
         } else if ($request->status == 'approved') {
             $updateData['approved_date'] = now();
+
+            // LOGGING
+            activity()
+               ->on($permohonan)
+               ->causedBy(Auth::user())
+               ->log('Permohonan Disetujui (Approved).');
         }
+        // ------------------------------------
 
         $permohonan->update($updateData);
 
@@ -267,43 +290,22 @@ class PermohonanController extends Controller
     {
         $this->authorize('update', $permohonan);
 
-
-
-        if (!class_exists('\Dompdf\Dompdf')) {
-            Log::error('DomPDF tidak ditemukan! Jalankan "composer require dompdf/dompdf"');
-            return redirect()->back()->with('error', 'Gagal generate: PDF renderer (DomPDF) tidak ditemukan.');
-        }
-
-        if (!class_exists('\PhpOffice\PhpWord\PhpWord')) {
-            Log::error('PhpWord tidak ditemukan! Jalankan "composer require phpoffice/phpword"');
-            return redirect()->back()->with('error', 'Gagal generate: PDF renderer (PhpWord) tidak ditemukan.');
-        }
-
-
-        Settings::setPdfRendererName(Settings::PDF_RENDERER_DOMPDF);
-
-        Settings::setPdfRendererPath(base_path('vendor/dompdf/dompdf'));
-
-
-
+        // Eager load relasi lokasi (penting buat data replacement)
         $permohonan->load('province', 'regency', 'district', 'village', 'districtUsaha', 'villageUsaha');
 
         $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()->with('templateDocs')->get();
 
         $replacementData = $permohonan->getAttributes();
-
         $replacementData['var_provinsi'] = $permohonan->nama_provinsi;
         $replacementData['var_kabupaten'] = $permohonan->nama_kabupaten;
         $replacementData['var_kecamatan'] = $permohonan->nama_kecamatan;
         $replacementData['var_kelurahan'] = $permohonan->nama_kelurahan;
         $replacementData['var_kecamatan_usaha'] = $permohonan->nama_kecamatan_usaha;
         $replacementData['var_kelurahan_usaha'] = $permohonan->nama_kelurahan_usaha;
-
         unset($replacementData['json_geometry']);
 
 
         $koordinatList = $permohonan->koordinat;
-
         $tableValues = [];
         if (!empty($koordinatList)) {
             foreach ($koordinatList as $index => $koor) {
@@ -325,60 +327,74 @@ class PermohonanController extends Controller
                 continue;
             }
 
-
+            // Path sementara (di /tmp)
             $tempDocxFile = '';
             $tempPdfFile = '';
 
             try {
                 $templatePath = Storage::disk('public')->path($template->var_file_path);
-
                 if (!file_exists($templatePath)) {
                     Log::error("File template tidak ditemukan: {$templatePath}");
                     continue;
                 }
 
+                // 1. Generate DOCX (ini tetep pake PhpWord)
                 $templateProcessor = new TemplateProcessor($templatePath);
-
-
                 $templateProcessor->setValues($replacementData);
                 $templateProcessor->cloneRowAndSetValues('koor_no', $tableValues);
 
-
+                // 2. Simpan DOCX ke file temporary
                 $tempDocxFile = tempnam(sys_get_temp_dir(), 'phpword_') . '.docx';
                 $templateProcessor->saveAs($tempDocxFile);
 
-                $phpWord = IOFactory::load($tempDocxFile);
-
+                // 3. Tentukan lokasi output temporary PDF
+                $tempOutputDir = sys_get_temp_dir();
                 $tempPdfFile = Str::beforeLast($tempDocxFile, '.docx') . '.pdf';
 
-                $pdfWriter = IOFactory::createWriter($phpWord, 'PDF');
-                $pdfWriter->save($tempPdfFile);
+                // 4. JALANKAN PERINTAH KONVERSI (Magic-nya di sini)
+                // Ini butuh 'libreoffice' ter-install di server
+                $process = new Process([
+                    'soffice', // Perintah LibreOffice (atau 'libreoffice')
+                    '--headless', // Jalan di background
+                    '--convert-to', 'pdf', // Konversi ke PDF
+                    $tempDocxFile, // File input
+                    '--outdir', $tempOutputDir // Folder output
+                ]);
 
-                if (!file_exists($tempPdfFile)) {
-                    throw new Exception('Konversi PDF (via DomPDF) gagal, file output tidak ditemukan.');
+                // Set timeout (misal 5 menit)
+                $process->setTimeout(300);
+                $process->run();
+
+                // Cek kalo konversi GAGAL
+                if (!$process->isSuccessful()) {
+                    throw new ProcessFailedException($process);
                 }
 
+                // Cek kalo file PDF-nya beneran ada
+                if (!file_exists($tempPdfFile)) {
+                    throw new Exception('Konversi PDF gagal, file output tidak ditemukan.');
+                }
 
+                // 5. Tentukan nama file & path di Storage
                 $generatedDir = "generated_documents/{$permohonan->id}";
-
+                // Ganti ekstensi jadi .pdf
                 $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.pdf';
                 $newPdfPath = "{$generatedDir}/{$newFileName}";
 
-
+                // 6. Pindahin file PDF dari temp ke Storage
                 Storage::disk('public')->put($newPdfPath, file_get_contents($tempPdfFile));
 
-
+                // 7. Update database dengan path PDF yang baru
                 $permohonanTemplateDoc->update([
-                    'var_generated_file_path' => $newPdfPath
+                    'var_generated_file_path' => $newPdfPath // Kolomnya tetep sama, tapi isinya .pdf
                 ]);
 
             } catch (Exception $e) {
                 Log::error('Gagal generate dokumen (ID: ' . $permohonanTemplateDoc->id . '): ' . $e->getMessage());
-
-
+                // Jangan redirect, lanjutin aja
 
             } finally {
-
+                // 8. BERSIH-BERSIH file temporary (PENTING!)
                 if (file_exists($tempDocxFile)) {
                     @unlink($tempDocxFile);
                 }
@@ -388,8 +404,8 @@ class PermohonanController extends Controller
             }
         }
 
-
-        return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate dan dikonversi ke PDF! (Cek hasilnya, mungkin berantakan)');
+        // Jangan redirect di sini, biarin fungsi 'status' yang ngurus
+        return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate!');
     }
 
     public function downloadKml(Permohonan $permohonan)

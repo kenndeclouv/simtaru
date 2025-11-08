@@ -19,10 +19,19 @@ class Permohonan extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['var_nama', 'enum_status', 'text_catatan'])
-            ->setDescriptionForEvent(fn(string $eventName) => "Permohonan {$this->var_nama} telah di-{$eventName}")
-            ->useLogName('Permohonan')
-            ->logOnlyDirty();
+            // Log semua kolom ini KALO ADA PERUBAHAN
+            ->logOnly([
+                'var_nama', 'text_alamat', // Info Pemohon
+                'var_nama_usaha', 'text_alamat_usaha', // Info Usaha
+                'enum_status', // Status
+                'user_request_tte_id', // Siapa yg request
+                'approved_date', // Kapan diapprove
+                'text_catatan', // Catatan
+                'var_penandatangan' // Siapa yg TTE
+            ])
+            ->logOnlyDirty() // <-- Penting! Cuma log yang berubah
+            ->setDescriptionForEvent(fn(string $eventName) => "Data Permohonan {$this->var_nama} telah di-{$eventName}")
+            ->useLogName('Permohonan');
     }
 
     public function permohonanTemplateDocs()

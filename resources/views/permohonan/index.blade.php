@@ -2,7 +2,7 @@
 @section('title', 'Data Permohonan SITR')
 
 @section('page-script')
-    <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script>
+    {{-- HAPUS INI: <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script> --}}
     <script>
         document.addEventListener("DOMContentLoaded", function(e) {
             let type = new URLSearchParams(window.location.search).get('type');
@@ -91,6 +91,11 @@
                             @endcan
 
                             if (row.enum_status !== 'pending') {
+                                // Ambil data dokumen pertama (kalo ada)
+                                let firstDoc = row.permohonan_template_docs && row.permohonan_template_docs.length > 0 ? row.permohonan_template_docs[0] : null;
+                                // Coba ambil nama dokumennya juga biar keren pas di modal
+                                let docName = firstDoc && firstDoc.template_docs ? firstDoc.template_docs.var_nama : 'Dokumen';
+
                                 buttons += `
                                     <div class="btn-group ms-1">
                                         <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Menu Tindakan">
@@ -98,27 +103,28 @@
                                         </button>
                                         <ul class="dropdown-menu">
                                             ${
-                                                row.permohonan_template_docs && row.permohonan_template_docs.length > 0 && row.permohonan_template_docs[0].var_generated_file_path
+                                                firstDoc && firstDoc.var_generated_file_path
                                                 ? `
                                                     <li>
                                                         <button
                                                             class="dropdown-item btn-preview-doc"
-                                                            data-doc-url="${row.permohonan_template_docs[0].var_generated_file_path}"
+                                                            data-file-url="${firstDoc.var_generated_file_path}"
+                                                            data-file-name="${docName}"
                                                             type="button"
                                                         >
-                                                            <i class="fas fa-file-word me-2"></i>Preview (.docx)
+                                                            <i class="fas fa-file-pdf me-2"></i>Preview PDF
                                                         </button>
                                                     </li>
                                                 `
                                                 : `
                                                     <li>
-                                                        <span class="dropdown-item text-muted" style="cursor:not-allowed;"><i class="fas fa-file-word me-2"></i>Preview - belum dibuat</span>
+                                                        <span class="dropdown-item text-muted" style="cursor:not-allowed;"><i class="fas fa-file-pdf me-2"></i>Preview - belum dibuat</span>
                                                     </li>
                                                 `
                                             }
-                                            ${row.enum_status === 'approved' ? `
+                                            ${row.enum_status === 'approved' && firstDoc ? `
                                                 <li>
-                                                    <a class="dropdown-item" href="${row.permohonan_template_docs[0].var_generated_file_path}" target="_blank">
+                                                    <a class="dropdown-item" href="${firstDoc.var_generated_file_path}" target="_blank">
                                                         <i class="fas fa-signature me-2"></i>View TTE
                                                     </a>
                                                 </li>
@@ -219,22 +225,44 @@
                 });
             });
 
-            // Handle preview docx modal
+            // --- HANDLE PREVIEW PDF MODAL (Updated) ---
+            // Kita pake delegation karena tombolnya ada di dalem DataTable
             $(document).on('click', '.btn-preview-doc', function() {
-                const docUrl = $(this).data('doc-url');
+                const fileUrl = $(this).data('file-url'); // Pake data-file-url
+                const fileName = $(this).data('file-name'); // Pake data-file-name
+
                 const $modal = $('#previewModal');
+                const $modalTitle = $('#previewModalLabel');
                 const $container = $('#modal-preview-content');
-                $container.html('<p class="text-center"><em>Loading preview...</em></p>');
+
+                // Update judul modal
+                $modalTitle.text('Preview: ' + (fileName || 'Dokumen'));
+
+                // Tampilin loading dulu
+                $container.html(`
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                `);
+
                 $modal.modal('show');
-                fetch(docUrl)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        docx.renderAsync(blob, $container[0])
-                            .then(x => {})
-                            .catch(e => $container.html('<p class="text-center text-danger">Gagal memuat file preview.</p>'));
-                    }).catch(e => {
-                        $container.html('<p class="text-center text-danger">Gagal memuat file preview.</p>');
-                    });
+
+                // Load iframe setelah modal muncul (biar smooth)
+                setTimeout(() => {
+                    $container.html(`
+                        <iframe src="${fileUrl}" width="100%" height="100%" style="border: none;" allowfullscreen>
+                            <p>Browser kamu tidak mendukung preview PDF.
+                            <a href="${fileUrl}" target="_blank">Download file</a> sebagai gantinya.</p>
+                        </iframe>
+                    `);
+                }, 300);
+            });
+
+            // Bersihin iframe pas modal ditutup
+            $('#previewModal').on('hidden.bs.modal', function () {
+                $('#modal-preview-content').empty();
             });
 
         });
@@ -308,18 +336,20 @@
         </div>
     </div>
 
-    {{-- Modal Preview DOCX --}}
+    {{-- MODAL PREVIEW PDF (Sama persis kayak show.blade.php) --}}
     <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header mb-4">
+                <div class="modal-header">
                     <h5 class="modal-title" id="previewModalLabel">Document Preview</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div id="modal-preview-content" class="overflow-hidden rounded" style="min-height: 400px;"></div>
+                <div class="modal-body p-0" style="height: 80vh;">
+                    <div id="modal-preview-content" class="h-100 w-100">
+                        {{-- Iframe akan dimuat di sini --}}
+                    </div>
                 </div>
-                <div class="modal-footer mt-4">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
