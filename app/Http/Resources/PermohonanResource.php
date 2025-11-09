@@ -24,6 +24,11 @@ class PermohonanResource extends JsonResource
             'tanggal_pengesahan' => $this->whenNotNull($this->date_tanggal_pengesahan),
             'catatan' => $this->whenNotNull($this->text_catatan),
             'lampiran_url' => $this->whenNotNull($this->var_url_lampiran),
+            'sk' => [
+                'nomor' => $this->whenNotNull($this->var_nomor_sk),
+                'tanggal_terbit' => $this->whenNotNull($this->date_sk_terbit ? (string) $this->date_sk_terbit : null),
+                'file_url' => $this->whenNotNull($this->var_sk_attachment),
+            ],
             // --- DATA PEMOHON ---
             'pemohon' => [
                 'nama' => $this->var_nama,

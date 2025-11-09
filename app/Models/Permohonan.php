@@ -19,17 +19,16 @@ class Permohonan extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            // Log semua kolom ini KALO ADA PERUBAHAN
             ->logOnly([
-                'var_nama', 'text_alamat', // Info Pemohon
-                'var_nama_usaha', 'text_alamat_usaha', // Info Usaha
-                'enum_status', // Status
-                'user_request_tte_id', // Siapa yg request
-                'approved_date', // Kapan diapprove
-                'text_catatan', // Catatan
-                'var_penandatangan' // Siapa yg TTE
+                'var_nama', 'text_alamat',
+                'var_nama_usaha', 'text_alamat_usaha',
+                'enum_status',
+                'user_request_tte_id',
+                'approved_date',
+                'text_catatan',
+                'var_penandatangan'
             ])
-            ->logOnlyDirty() // <-- Penting! Cuma log yang berubah
+            ->logOnlyDirty()
             ->setDescriptionForEvent(fn(string $eventName) => "Data Permohonan {$this->var_nama} telah di-{$eventName}")
             ->useLogName('Permohonan');
     }
@@ -245,5 +244,10 @@ class Permohonan extends Model
     public function userRequestTteBy()
     {
         return $this->belongsTo(User::class, 'user_request_tte_id');
+    }
+
+    public function getVarSkAttachmentAttribute()
+    {
+        return $this->generateAttachmentUrl($this->attributes['var_sk_attachment'] ?? null);
     }
 }

@@ -35,6 +35,12 @@ Route::group(['prefix' => 'v1'], function () {
         Route::get('/permohonan/{permohonan}/timeline', [PermohonanController::class, 'timeline'])
                 ->name('api.permohonan.timeline');
 
+        Route::post('/permohonan/{permohonan}/update-tte', [PermohonanController::class, 'updateSignedDocument'])
+                ->name('api.permohonan.update-tte');
+
+        Route::post('/permohonan/{permohonan}/update-sk', [PermohonanController::class, 'updateSkDocument'])
+                ->name('api.permohonan.update-sk');
+
         Route::post('/attachments', [AttachmentController::class, 'store'])->name('api.attachments.store');
     });
     Route::prefix('location')->group(function () {
