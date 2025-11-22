@@ -24,6 +24,7 @@ class TemplateDocResource extends JsonResource
         return [
             'template_id' => $template->id,
             'id' => $this->id,
+            'jenis_template' => $template->enum_jenis,
             'nama_dokumen' => $template->var_nama,
             'path_template' => $template->var_file_path
                 ? asset('storage/' . ltrim($template->var_file_path, '/'))

@@ -53,7 +53,13 @@ class PermohonanController extends Controller
             }
 
             $query->orderBy('created_at', 'desc');
-            return DataTables::of($query)->make(true);
+                return DataTables::of($query)
+                ->editColumn('var_kabupaten', function($row) {
+                    return $row->nama_kabupaten ?? '-';
+                })
+                ->editColumn('enum_status', function($row) {
+                    return $row->enum_status;
+                })->make(true);
         }
         return view('permohonan.index', compact('type'));
     }
@@ -78,8 +84,32 @@ class PermohonanController extends Controller
 
         $user = Auth::user();
 
+        $selectedTemplateIds = $validated['pilihan_redaksi_ids'] ?? [];
+
+        $uniqueTypes = TemplateDocs::whereIn('id', $selectedTemplateIds)
+                        ->pluck('enum_jenis')
+                        ->unique()
+                        ->toArray();
+
+        $finalType = 'sitr';
+
+        $hasSitr = in_array('sitr', $uniqueTypes);
+        $hasRdtr = in_array('rdtr', $uniqueTypes);
+        $hasKkpr = in_array('kkpr', $uniqueTypes);
+
+        if ($hasSitr && $hasRdtr) {
+            $finalType = 'sitr/rdtr';
+        } elseif ($hasSitr && !$hasRdtr) {
+            $finalType = 'sitr';
+        } elseif (!$hasSitr && $hasRdtr) {
+            $finalType = 'rdtr';
+        } elseif ($hasKkpr) {
+            $finalType = 'kkpr';
+        }
+
         $tahun = now()->year;
         $last = (Permohonan::latest()->first()->id ?? 0) + 1;
+
         $preFixNomorPermohonan = KeyStorage::where('var_key', 'preFixNomorPermohonan')->first()->var_value;
         $postFixNomorPermohonan = KeyStorage::where('var_key', 'postFixNomorPermohonan')->first()->var_value;
         $preFixNomorSurat = KeyStorage::where('var_key', 'preFixNomorSurat')->first()->var_value;
@@ -88,7 +118,8 @@ class PermohonanController extends Controller
         $validated["user_id"] = $user->id;
         $validated['var_nomor_permohonan'] = "{$preFixNomorPermohonan}{$last}{$postFixNomorPermohonan}{$tahun}";
         $validated['var_nomor_pengesahan'] = "{$preFixNomorSurat}{$last}{$postFixNomorSurat}{$tahun}";
-        $validated['var_type'] = $validated['var_type'] ?? 'sitr/rdtr';
+
+        $validated['var_type'] = $finalType;
 
         $permohonan = Permohonan::create($validated);
 
@@ -104,7 +135,6 @@ class PermohonanController extends Controller
             'var_ptp_kkpr_nonberusaha_attachment',
             'var_akta_pendirian_badan_attachment',
         ];
-
         $finalAttachmentPaths = [];
 
         foreach ($attachmentFields as $field) {
@@ -117,25 +147,25 @@ class PermohonanController extends Controller
             }
         }
 
-
         if (!empty($finalAttachmentPaths)) {
             $permohonan->update($finalAttachmentPaths);
         }
 
-
         if (isset($validated['pilihan_redaksi_ids'])) {
             foreach ($validated['pilihan_redaksi_ids'] as $template_doc_id) {
-                $template_doc = TemplateDocs::find($template_doc_id);
-                if ($template_doc) {
-                    PermohonanTemplateDoc::create([
-                        'fk_permohonan_id' => $permohonan->id,
-                        'fk_template_docs_id' => $template_doc->id
-                    ]);
-                }
+                PermohonanTemplateDoc::create([
+                    'fk_permohonan_id' => $permohonan->id,
+                    'fk_template_docs_id' => $template_doc_id
+                ]);
             }
         }
 
-        return redirect()->route('permohonan.index', ['type' => $validated['var_type']])->with('success', 'Permohonan berhasil disimpan.');
+        $redirectType = ($finalType == 'sitr' || $finalType == 'rdtr' || $finalType == 'sitr/rdtr')
+                        ? 'sitr/rdtr'
+                        : $finalType;
+
+        return redirect()->route('permohonan.index', ['type' => $redirectType])
+                         ->with('success', 'Permohonan berhasil disimpan.');
     }
 
     public function edit(Permohonan $permohonan, Request $request)
@@ -228,7 +258,7 @@ class PermohonanController extends Controller
     {
         $this->authorize('approve', $permohonan);
 
-        // ... (kode lampiran kamu) ...
+
         $lampiranName = null;
         if ($request->hasFile('lampiran')) {
             $lampiran = $request->file('lampiran');
@@ -244,41 +274,41 @@ class PermohonanController extends Controller
             $updateData['var_lampiran'] = 'uploads/' . $lampiranName;
         }
 
-        // --- TAMBAHIN LOG MANUAL DI SINI ---
+
         if ($request->status == 'request_tte') {
             $updateData['user_request_tte_id'] = Auth::user()->id;
             $updateData['request_tte_date'] = now();
 
             $this->generateDocuments($permohonan);
 
-            // LOGGING
+
             activity()
-               ->on($permohonan) // Nempelin log ke permohonan ini
-               ->causedBy(Auth::user()) // Siapa yang ngelakuin
-               ->log('Mengajukan TTE dan men-generate dokumen PDF.'); // Pesannya
+               ->on($permohonan)
+               ->causedBy(Auth::user())
+               ->event('request_tte')
+               ->log('Mengajukan TTE dan men-generate dokumen PDF.');
 
         } else if ($request->status == 'rejected') {
             $updateData['user_request_tte_id'] = null;
             $updateData['request_tte_date'] = null;
 
-            // LOGGING
             activity()
                ->on($permohonan)
                ->causedBy(Auth::user())
-               // Bonus: simpen catatannya di log
+               ->event('rejected')
                ->withProperty('catatan_penolakan', $request->catatan)
                ->log('Permohonan Ditolak.');
 
         } else if ($request->status == 'approved') {
             $updateData['approved_date'] = now();
 
-            // LOGGING
             activity()
                ->on($permohonan)
                ->causedBy(Auth::user())
+               ->event('approved')
                ->log('Permohonan Disetujui (Approved).');
         }
-        // ------------------------------------
+
 
         $permohonan->update($updateData);
 
@@ -290,7 +320,6 @@ class PermohonanController extends Controller
     {
         $this->authorize('update', $permohonan);
 
-        // Eager load relasi lokasi (penting buat data replacement)
         $permohonan->load('province', 'regency', 'district', 'village', 'districtUsaha', 'villageUsaha');
 
         $permohonanTemplateDocs = $permohonan->permohonanTemplateDocs()->with('templateDocs')->get();
@@ -327,7 +356,7 @@ class PermohonanController extends Controller
                 continue;
             }
 
-            // Path sementara (di /tmp)
+
             $tempDocxFile = '';
             $tempPdfFile = '';
 
@@ -338,63 +367,63 @@ class PermohonanController extends Controller
                     continue;
                 }
 
-                // 1. Generate DOCX (ini tetep pake PhpWord)
+
                 $templateProcessor = new TemplateProcessor($templatePath);
                 $templateProcessor->setValues($replacementData);
                 $templateProcessor->cloneRowAndSetValues('koor_no', $tableValues);
 
-                // 2. Simpan DOCX ke file temporary
+
                 $tempDocxFile = tempnam(sys_get_temp_dir(), 'phpword_') . '.docx';
                 $templateProcessor->saveAs($tempDocxFile);
 
-                // 3. Tentukan lokasi output temporary PDF
+
                 $tempOutputDir = sys_get_temp_dir();
                 $tempPdfFile = Str::beforeLast($tempDocxFile, '.docx') . '.pdf';
 
-                // 4. JALANKAN PERINTAH KONVERSI (Magic-nya di sini)
-                // Ini butuh 'libreoffice' ter-install di server
+
+
                 $process = new Process([
-                    'soffice', // Perintah LibreOffice (atau 'libreoffice')
-                    '--headless', // Jalan di background
-                    '--convert-to', 'pdf', // Konversi ke PDF
-                    $tempDocxFile, // File input
-                    '--outdir', $tempOutputDir // Folder output
+                    'soffice',
+                    '--headless',
+                    '--convert-to', 'pdf',
+                    $tempDocxFile,
+                    '--outdir', $tempOutputDir
                 ]);
 
-                // Set timeout (misal 5 menit)
+
                 $process->setTimeout(300);
                 $process->run();
 
-                // Cek kalo konversi GAGAL
+
                 if (!$process->isSuccessful()) {
                     throw new ProcessFailedException($process);
                 }
 
-                // Cek kalo file PDF-nya beneran ada
+
                 if (!file_exists($tempPdfFile)) {
                     throw new Exception('Konversi PDF gagal, file output tidak ditemukan.');
                 }
 
-                // 5. Tentukan nama file & path di Storage
+
                 $generatedDir = "generated_documents/{$permohonan->id}";
-                // Ganti ekstensi jadi .pdf
+
                 $newFileName = pathinfo($template->var_file_path, PATHINFO_FILENAME) . '_' . time() . '.pdf';
                 $newPdfPath = "{$generatedDir}/{$newFileName}";
 
-                // 6. Pindahin file PDF dari temp ke Storage
+
                 Storage::disk('public')->put($newPdfPath, file_get_contents($tempPdfFile));
 
-                // 7. Update database dengan path PDF yang baru
+
                 $permohonanTemplateDoc->update([
-                    'var_generated_file_path' => $newPdfPath // Kolomnya tetep sama, tapi isinya .pdf
+                    'var_generated_file_path' => $newPdfPath
                 ]);
 
             } catch (Exception $e) {
                 Log::error('Gagal generate dokumen (ID: ' . $permohonanTemplateDoc->id . '): ' . $e->getMessage());
-                // Jangan redirect, lanjutin aja
+
 
             } finally {
-                // 8. BERSIH-BERSIH file temporary (PENTING!)
+
                 if (file_exists($tempDocxFile)) {
                     @unlink($tempDocxFile);
                 }
@@ -404,7 +433,7 @@ class PermohonanController extends Controller
             }
         }
 
-        // Jangan redirect di sini, biarin fungsi 'status' yang ngurus
+
         return redirect()->back()->with('success', 'Semua dokumen berhasil di-generate!');
     }
 

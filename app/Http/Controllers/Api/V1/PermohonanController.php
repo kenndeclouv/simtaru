@@ -18,6 +18,9 @@ class PermohonanController extends Controller
         $type = $request->query('type');
 
         $query = Permohonan::where('enum_status', 'request_tte')
+                 ->whereHas('permohonanTemplateDocs', function ($q) {
+                     $q->whereNotNull('var_generated_file_path');
+                 })
                  ->with([
                     'permohonanTemplateDocs.templateDocs.placeholders',
                     'user',
@@ -53,6 +56,7 @@ class PermohonanController extends Controller
 
     public function updateSignedDocument(Request $request, Permohonan $permohonan)
     {
+
         $validator = Validator::make($request->all(), [
             'generated_doc_id' => 'required|exists:permohonans_template_docs,id',
             'var_generated_file_path' => 'required|string',
@@ -64,21 +68,23 @@ class PermohonanController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+
         $docPivot = $permohonan->permohonanTemplateDocs()
+            ->with('templateDocs')
             ->where('id', $request->generated_doc_id)
             ->first();
 
         if (!$docPivot) {
-            return response()->json(['message' => 'Dokumen tidak ditemukan untuk permohonan ini.'], 404);
+            return response()->json(['message' => 'Dokumen tidak ditemukan.'], 404);
         }
 
         try {
+
             $inputValue = $request->input('var_generated_file_path');
             $finalPath = null;
 
             if (str_starts_with($inputValue, 'http')) {
                 $finalPath = $inputValue;
-
             } else {
                 if (Storage::disk('public')->exists($inputValue)) {
                     if ($docPivot->var_generated_file_path &&
@@ -89,11 +95,10 @@ class PermohonanController extends Controller
 
                     $fileName = 'TTE_' . time() . '_' . basename($inputValue);
                     $permanentPath = "permohonan/{$permohonan->id}/tte_documents/{$fileName}";
-
                     Storage::disk('public')->move($inputValue, $permanentPath);
                     $finalPath = $permanentPath;
                 } else {
-                    return response()->json(['message' => 'File tidak ditemukan di storage sementara.'], 404);
+                    return response()->json(['message' => 'File temporary tidak ditemukan.'], 404);
                 }
             }
 
@@ -101,39 +106,54 @@ class PermohonanController extends Controller
                 'var_generated_file_path' => $finalPath,
             ]);
 
-            $permohonan->update([
-                'enum_status' => 'approved',
-                'approved_date' => $request->signed_at ?? now(),
-                'var_penandatangan' => $request->var_penandatangan ?? "Sistem Simpadu",
-            ]);
+            if ($permohonan->enum_status !== 'approved') {
 
-            activity()
-               ->on($permohonan)
-               ->byAnonymous()
-               ->withProperties([
-                   'signer' => $request->var_penandatangan ?? 'Sistem Simpadu',
-                   'file_type' => str_starts_with($inputValue, 'http') ? 'external_url' : 'uploaded_file'
-               ])
-               ->log('Dokumen telah ditandatangani elektronik (TTE) dan diterima dari SIMPADU.');
+
+                \App\Models\Permohonan::withoutLogs(function () use ($permohonan, $request) {
+                    $permohonan->update([
+                        'enum_status' => 'approved',
+                        'approved_date' => $request->signed_at ?? now(),
+                        'var_penandatangan' => $request->var_penandatangan ?? "Sistem Simpadu",
+                    ]);
+                });
+
+                activity()
+                   ->on($permohonan)
+                   ->byAnonymous()
+                   ->event('approved')
+                   ->withProperties([
+                       'signer' => $request->var_penandatangan ?? 'Sistem Simpadu',
+                       'first_doc' => $docPivot->templateDocs->var_nama ?? 'Dokumen TTE'
+                   ])
+                   ->log('Dokumen TTE diterima. Permohonan resmi Disetujui (Approved).');
+            } else {
+                activity()
+                   ->on($permohonan)
+                   ->byAnonymous()
+                   ->event('approved')
+                   ->withProperties([
+                       'updated_doc' => $docPivot->templateDocs->var_nama ?? 'Dokumen TTE'
+                   ])
+                   ->log('Dokumen TTE tambahan/revisi diterima dari SIMPADU.');
+            }
 
             $responsePath = str_starts_with($finalPath, 'http') ? $finalPath : asset('storage/' . $finalPath);
 
             return response()->json([
-                'message' => 'Dokumen TTE berhasil disimpan dan status permohonan diperbarui.',
+                'message' => 'Dokumen TTE berhasil disimpan.',
                 'path' => $responsePath,
             ]);
-
-        } catch (Exception $e) {
-            Log::error('API TTE Callback Error (ID: ' . $permohonan->id . '): ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal memproses dokumen TTE. Hubungi administrator SIMTARU.'], 500);
+        } catch (\Exception $e) {
+            Log::error('API TTE Callback Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Gagal memproses dokumen TTE.'], 500);
         }
     }
 
     public function updateSkDocument(Request $request, Permohonan $permohonan)
     {
-        
+
         $validator = Validator::make($request->all(), [
-            'sk_file' => 'required|string', 
+            'sk_file' => 'required|string',
             'nomor_sk' => 'nullable|string|max:255',
             'tanggal_terbit' => 'nullable|date',
         ]);
@@ -146,21 +166,21 @@ class PermohonanController extends Controller
             $inputValue = $request->input('sk_file');
             $finalPath = null;
 
-            
+
             if (str_starts_with($inputValue, 'http')) {
-                
+
                 $finalPath = $inputValue;
             } else {
-                
+
                 if (Storage::disk('public')->exists($inputValue)) {
-                    
+
                     if ($permohonan->var_sk_attachment &&
                         !str_starts_with($permohonan->var_sk_attachment, 'http') &&
                         Storage::disk('public')->exists($permohonan->var_sk_attachment)) {
                         Storage::disk('public')->delete($permohonan->var_sk_attachment);
                     }
 
-                    
+
                     $fileName = 'SK_' . time() . '_' . basename($inputValue);
                     $permanentPath = "permohonan/{$permohonan->id}/sk_documents/{$fileName}";
                     Storage::disk('public')->move($inputValue, $permanentPath);
@@ -170,16 +190,16 @@ class PermohonanController extends Controller
                 }
             }
 
-            
+
             $permohonan->update([
                 'var_sk_attachment' => $finalPath,
                 'var_nomor_sk' => $request->nomor_sk,
                 'date_sk_terbit' => $request->tanggal_terbit ?? now(),
-                
+
                 'enum_status' => 'approved',
             ]);
 
-            
+
             activity()
                ->on($permohonan)
                ->byAnonymous()

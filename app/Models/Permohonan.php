@@ -22,7 +22,6 @@ class Permohonan extends Model
             ->logOnly([
                 'var_nama', 'text_alamat',
                 'var_nama_usaha', 'text_alamat_usaha',
-                'enum_status',
                 'user_request_tte_id',
                 'approved_date',
                 'text_catatan',

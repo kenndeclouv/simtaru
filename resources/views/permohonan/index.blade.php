@@ -2,7 +2,6 @@
 @section('title', 'Data Permohonan SITR')
 
 @section('page-script')
-    {{-- HAPUS INI: <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.js"></script> --}}
     <script>
         document.addEventListener("DOMContentLoaded", function(e) {
             let type = new URLSearchParams(window.location.search).get('type');
@@ -166,7 +165,6 @@
                     }
                 },
                 drawCallback: function(settings) {
-                    // Cari semua elemen tooltip yang baru digambar di dalam tabel
                     const tooltipTriggerList = [].slice.call(this.api().table().body().querySelectorAll(
                         '[data-bs-toggle="tooltip"]'));
                     tooltipTriggerList.map(function(tooltipTriggerEl) {
@@ -225,11 +223,9 @@
                 });
             });
 
-            // --- HANDLE PREVIEW PDF MODAL (Updated) ---
-            // Kita pake delegation karena tombolnya ada di dalem DataTable
             $(document).on('click', '.btn-preview-doc', function() {
-                const fileUrl = $(this).data('file-url'); // Pake data-file-url
-                const fileName = $(this).data('file-name'); // Pake data-file-name
+                const fileUrl = $(this).data('file-url');
+                const fileName = $(this).data('file-name');
 
                 const $modal = $('#previewModal');
                 const $modalTitle = $('#previewModalLabel');
@@ -249,7 +245,6 @@
 
                 $modal.modal('show');
 
-                // Load iframe setelah modal muncul (biar smooth)
                 setTimeout(() => {
                     $container.html(`
                         <iframe src="${fileUrl}" width="100%" height="100%" style="border: none;" allowfullscreen>
@@ -260,7 +255,6 @@
                 }, 300);
             });
 
-            // Bersihin iframe pas modal ditutup
             $('#previewModal').on('hidden.bs.modal', function () {
                 $('#modal-preview-content').empty();
             });

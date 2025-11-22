@@ -63,6 +63,7 @@ class PermohonanResource extends JsonResource
             ],
             'geometri' => $this->whenNotNull(json_decode($this->json_geometry)),
 
+            'tipe_permohonan' => $this->var_type,
             'template_dokumen' => TemplateDocResource::collection(
                 $this->whenLoaded('permohonanTemplateDocs')
             ),
