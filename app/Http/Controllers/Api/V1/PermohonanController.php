@@ -57,6 +57,7 @@ class PermohonanController extends Controller
     public function updateSignedDocument(Request $request, Permohonan $permohonan)
     {
 
+        // 1. VALIDASI (Tetap sama)
         $validator = Validator::make($request->all(), [
             'generated_doc_id' => 'required|exists:permohonans_template_docs,id',
             'var_generated_file_path' => 'required|string',
@@ -68,7 +69,7 @@ class PermohonanController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-
+        // 2. AMBIL PIVOT DOKUMEN (Tetap sama)
         $docPivot = $permohonan->permohonanTemplateDocs()
             ->with('templateDocs')
             ->where('id', $request->generated_doc_id)
@@ -79,7 +80,7 @@ class PermohonanController extends Controller
         }
 
         try {
-
+            // 3. PROSES SIMPAN FILE (Tetap sama)
             $inputValue = $request->input('var_generated_file_path');
             $finalPath = null;
 
@@ -87,12 +88,14 @@ class PermohonanController extends Controller
                 $finalPath = $inputValue;
             } else {
                 if (Storage::disk('public')->exists($inputValue)) {
+                    // Hapus file lama logic...
                     if ($docPivot->var_generated_file_path &&
                         !str_starts_with($docPivot->var_generated_file_path, 'http') &&
                         Storage::disk('public')->exists($docPivot->var_generated_file_path)) {
                         Storage::disk('public')->delete($docPivot->var_generated_file_path);
                     }
 
+                    // Perhatikan: Kamu nambahin prefix 'TTE_' di sini
                     $fileName = 'TTE_' . time() . '_' . basename($inputValue);
                     $permanentPath = "permohonan/{$permohonan->id}/tte_documents/{$fileName}";
                     Storage::disk('public')->move($inputValue, $permanentPath);
@@ -102,47 +105,72 @@ class PermohonanController extends Controller
                 }
             }
 
+            // Update path dokumen yang sedang diproses
             $docPivot->update([
                 'var_generated_file_path' => $finalPath,
             ]);
 
-            if ($permohonan->enum_status !== 'approved') {
+            // ==========================================================
+            // LOGIC BARU: CEK APAKAH SEMUA DOKUMEN SUDAH DI-TTE?
+            // ==========================================================
+            // Kita hitung, ada berapa dokumen di permohonan ini yang BELUM di-TTE.
+            // Asumsinya: Dokumen yg SUDAH TTE itu path-nya mengandung string "/TTE_" (lokal) atau "http" (eksternal)
+            $pendingDocsCount = $permohonan->permohonanTemplateDocs()
+                ->where(function($q) {
+                    $q->where('var_generated_file_path', 'NOT LIKE', '%/TTE_%')
+                        ->where('var_generated_file_path', 'NOT LIKE', 'http%');
+                })
+                ->count();
 
-
-                \App\Models\Permohonan::withoutLogs(function () use ($permohonan, $request) {
-                    $permohonan->update([
-                        'enum_status' => 'approved',
-                        'approved_date' => $request->signed_at ?? now(),
-                        'var_penandatangan' => $request->var_penandatangan ?? "Sistem Simpadu",
-                    ]);
-                });
-
+            // KONDISI 1: Jika masih ada dokumen lain yang belum TTE ($pendingDocsCount > 0)
+            if ($pendingDocsCount > 0) {
+                // JANGAN ubah status permohonan jadi Approved. Biarkan tetap 'request_tte'.
+                // Cukup log saja bahwa satu dokumen berhasil masuk.
                 activity()
                    ->on($permohonan)
                    ->byAnonymous()
-                   ->event('approved')
+                   ->event('document_signed_partial') // Event custom biar tau ini parsial
                    ->withProperties([
-                       'signer' => $request->var_penandatangan ?? 'Sistem Simpadu',
-                       'first_doc' => $docPivot->templateDocs->var_nama ?? 'Dokumen TTE'
+                       'signed_doc' => $docPivot->templateDocs->var_nama ?? 'Dokumen',
+                       'remaining_docs' => $pendingDocsCount
                    ])
-                   ->log('Dokumen TTE diterima. Permohonan resmi Disetujui (Approved).');
-            } else {
-                activity()
-                   ->on($permohonan)
-                   ->byAnonymous()
-                   ->event('approved')
-                   ->withProperties([
-                       'updated_doc' => $docPivot->templateDocs->var_nama ?? 'Dokumen TTE'
-                   ])
-                   ->log('Dokumen TTE tambahan/revisi diterima dari SIMPADU.');
+                   ->log("Dokumen {$docPivot->templateDocs->var_nama} telah di-TTE. Menunggu {$pendingDocsCount} dokumen lainnya.");
+
             }
+            // KONDISI 2: Jika count-nya 0, berarti INI ADALAH DOKUMEN TERAKHIR!
+            else {
+                // Baru kita hajar statusnya jadi APPROVED
+                if ($permohonan->enum_status !== 'approved') {
+
+                    Permohonan::withoutEvents(function () use ($permohonan, $request) {
+                        $permohonan->update([
+                            'enum_status' => 'approved',
+                            'approved_date' => $request->signed_at ?? now(),
+                            'var_penandatangan' => $request->var_penandatangan ?? "Sistem Simpadu",
+                        ]);
+                    });
+
+                    activity()
+                       ->on($permohonan)
+                       ->byAnonymous()
+                       ->event('approved')
+                       ->withProperties([
+                           'signer' => $request->var_penandatangan ?? 'Sistem Simpadu',
+                           'last_doc' => $docPivot->templateDocs->var_nama ?? 'Dokumen TTE'
+                       ])
+                       ->log('Semua dokumen telah lengkap di-TTE. Permohonan resmi Disetujui (Approved).');
+                }
+            }
+            // ==========================================================
 
             $responsePath = str_starts_with($finalPath, 'http') ? $finalPath : asset('storage/' . $finalPath);
 
             return response()->json([
                 'message' => 'Dokumen TTE berhasil disimpan.',
                 'path' => $responsePath,
+                'is_fully_approved' => $pendingDocsCount === 0
             ]);
+
         } catch (\Exception $e) {
             Log::error('API TTE Callback Error: ' . $e->getMessage());
             return response()->json(['message' => 'Gagal memproses dokumen TTE.'], 500);
