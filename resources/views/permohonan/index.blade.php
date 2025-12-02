@@ -56,9 +56,9 @@
                         orderable: false,
                         searchable: false,
                         render: function(data, type, row) {
-                            var showUrl = `/permohonan/${row.id}?type={{ $type }}`;
-                            var editUrl = `/permohonan/${row.id}/edit?type={{ $type }}`;
-                            var deleteUrl = `/permohonan/${row.id}?type={{ $type }}`;
+                            var showUrl = "{{ route('permohonan.show', ['permohonan' => ':id', 'type' => $type]) }}".replace(':id', row.id);
+                            var editUrl = "{{ route('permohonan.edit', ['permohonan' => ':id', 'type' => $type]) }}".replace(':id', row.id);
+                            var deleteUrl = "{{ route('permohonan.destroy', ['permohonan' => ':id', 'type' => $type]) }}".replace(':id', row.id);
                             var namaPengusul = row.var_nama;
 
                             let buttons = `
@@ -179,7 +179,7 @@
                 const button = event.relatedTarget;
                 const permohonanId = button.getAttribute('data-id');
                 const currentStatus = button.getAttribute('data-status');
-                const formAction = `/permohonan/${permohonanId}/status`;
+                const formAction = "{{ route('permohonan.status', ['permohonan' => ':id', 'type' => $type]) }}".replace(':id', permohonanId);
                 const form = statusModal.querySelector('form');
                 form.setAttribute('action', formAction);
                 const statusSelect = statusModal.querySelector('#status');

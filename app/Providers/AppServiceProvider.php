@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Permohonan;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
 use App\Policies\PermohonanPolicy;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -61,5 +63,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return $user->hasRole('Super Admin') ? true : null;
         });
+
+        if (config('app.laravel_force_url')) {
+
+            // 1. Paksa HTTPS (Opsional, tapi wajib kalau servernya HTTPS)
+            URL::forceScheme('https');
+
+            // 2. Paksa Root URL sesuai APP_URL di .env
+            URL::forceRootUrl(config('app.url'));
+        }
     }
 }

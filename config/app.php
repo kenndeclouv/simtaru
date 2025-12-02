@@ -148,6 +148,7 @@ return [
     'primary_color' => env('APP_STYLE_PRIMARY_COLOR', '#ffffff'),
     'themes' => env('APP_STYLE_THEMES', 'theme-default'),
     'semi_dark' => env('APP_STYLE_SEMI_DARK', 'false'),
-    
+
     'google_maps_api_key' => env('GOOGLE_MAPS_API_KEY', ),
+    'laravel_force_url' => env('FORCE_LARAVEL_URL', false),
 ];

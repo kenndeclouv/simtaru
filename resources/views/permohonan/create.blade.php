@@ -34,6 +34,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@4.7.0/dist/togeojson.umd.min.js"></script>
     <script>
+        const API_BASE_URL = "{{ url('api/v1/location') }}";
+
         const PROVINSI_ID_DEFAULT = {{ $keyStorages->where('var_key', 'provinsiUsahaDefaultId')->first()->var_value }};
         const KABUPATEN_ID_DEFAULT = {{ $keyStorages->where('var_key', 'kabupatenUsahaDefaultId')->first()->var_value }};
 
@@ -84,7 +86,7 @@
                 $prov.on('change', function() {
                     const provId = $(this).val();
                     if (provId) {
-                        populateSelect($kab, `/api/v1/location/regencies/${provId}`,
+                        populateSelect($kab, `${API_BASE_URL}/regencies/${provId}`,
                             '-- Pilih Kabupaten --');
                     } else {
                         $kab.html('<option value="">-- Pilih Kabupaten --</option>').prop('disabled', true)
@@ -99,7 +101,7 @@
                 $kab.on('change', function() {
                     const kabId = $(this).val();
                     if (kabId) {
-                        populateSelect($kec, `/api/v1/location/districts/${kabId}`,
+                        populateSelect($kec, `${API_BASE_URL}/districts/${kabId}`,
                             '-- Pilih Kecamatan --');
                     } else {
                         $kec.html('<option value="">-- Pilih Kecamatan --</option>').prop('disabled', true)
@@ -112,7 +114,7 @@
                 $kec.on('change', function() {
                     const kecId = $(this).val();
                     if (kecId) {
-                        populateSelect($kel, `/api/v1/location/villages/${kecId}`,
+                        populateSelect($kel, `${API_BASE_URL}/villages/${kecId}`,
                             '-- Pilih Kelurahan --');
                     } else {
                         $kel.html('<option value="">-- Pilih Kelurahan --</option>').prop('disabled', true)
@@ -125,14 +127,14 @@
 
         $(document).ready(async function() {
             const $pengusulGroup = $('.location-group').eq(0);
-            await populateSelect($pengusulGroup.find('.provinsi'), '/api/v1/location/provinces',
+            await populateSelect($pengusulGroup.find('.provinsi'), `${API_BASE_URL}/provinces`,
                 '-- Pilih Provinsi --');
 
             const $usahaGroup = $('.location-group').eq(1);
             $usahaGroup.find('.provinsi').val(PROVINSI_ID_DEFAULT);
             $usahaGroup.find('.kabupaten').val(KABUPATEN_ID_DEFAULT);
             await populateSelect($usahaGroup.find('.kecamatan'),
-                `/api/v1/location/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --');
+                `${API_BASE_URL}/districts/${KABUPATEN_ID_DEFAULT}`, '-- Pilih Kecamatan --');
 
             bindLocationChangeEvents();
         });

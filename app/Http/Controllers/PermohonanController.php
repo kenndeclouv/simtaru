@@ -39,9 +39,14 @@ class PermohonanController extends Controller
     public function index(Request $request)
     {
         $type = $request->type ?? 'sitr/rdtr';
+        if ($type == 'sitr/rdtr') {
+            $typeQuery = ['sitr', 'rdtr', 'sitr/rdtr'];
+        } else {
+            $typeQuery = [$type];
+        }
         if ($request->ajax()) {
             $query = Permohonan::with('permohonanTemplateDocs.templateDocs')
-                ->where('var_type', $type);
+                ->whereIn('var_type', $typeQuery);
 
             $user = Auth::user();
 

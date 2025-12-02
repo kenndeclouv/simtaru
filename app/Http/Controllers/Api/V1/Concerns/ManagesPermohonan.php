@@ -21,6 +21,13 @@ trait ManagesPermohonan
     {
         $user = Auth::user();
 
+        $type = $this->permohonanType;
+        if ($type == 'sitr/rdtr') {
+            $typeQuery = ['sitr', 'rdtr', 'sitr/rdtr'];
+        } else {
+            $typeQuery = [$type];
+        }
+
         // TAMBAHIN SEMUA RELASI LOKASI + PLACEHOLDERS DI SINI
         $query = Permohonan::with([
             'permohonanTemplateDocs.templateDocs.placeholders',
@@ -33,9 +40,8 @@ trait ManagesPermohonan
             'districtUsaha',
             'villageUsaha'
         ])
-            ->where('var_type', $this->permohonanType);
+            ->whereIn('var_type', $typeQuery);
 
-        // ... (sisa logic permission kamu udah bener) ...
         if (!$user->can('view any permohonan') && $user->can('view permohonan')) {
             $query->where('user_id', $user->id);
         } else if (!$user->can('view any permohonan') && !$user->can('view permohonan')) {
@@ -144,7 +150,7 @@ trait ManagesPermohonan
         if ($user->cannot('view', $permohonan)) {
             abort(403, 'Unauthorized.');
         }
-        // Load relasi SEBELUM return
+
         $permohonan->load(
             'permohonanTemplateDocs.templateDocs.placeholders',
             'user',
